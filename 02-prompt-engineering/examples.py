@@ -3,11 +3,23 @@ Prompt Engineering Examples
 
 Annotated Python examples demonstrating core prompt engineering techniques.
 Uses a generic LLM interface — swap in any provider (OpenAI, Anthropic, etc.).
+
+PYTHON CONCEPTS DEMONSTRATED:
+- dataclasses: Clean data structures without boilerplate (@dataclass decorator)
+- Protocols: Structural typing for flexible interfaces (like TypeScript interfaces)
+- Type hints: list[str], dict, Literal, async/await
+- Async functions: All LLM calls are async (non-blocking I/O)
+- F-strings: Dynamic prompt building
+- List comprehensions: Data transformation
+- Pattern matching with conditionals
+
+This file is meant to be READ, not run. To make it runnable, implement the
+CompletionFn protocol with your chosen LLM provider (OpenAI, Anthropic, etc.).
 """
 
-from dataclasses import dataclass
-from typing import Protocol, Literal
-import json
+from dataclasses import dataclass  # Eliminates class boilerplate
+from typing import Protocol, Literal  # Type system features
+import json  # For parsing/generating JSON
 
 
 # ---------------------------------------------------------------------------
@@ -31,7 +43,18 @@ class LLMConfig:
 
 
 class CompletionFn(Protocol):
-    """Generic completion function — implement with your provider of choice."""
+    """
+    Generic completion function — implement with your provider of choice.
+
+    PYTHON NOTE: Protocol = structural typing (like TypeScript interfaces).
+    Any object with a __call__ method matching this signature will work.
+    No inheritance required! This makes the code provider-agnostic.
+
+    Example implementations:
+    - class OpenAICompletion: async def __call__(...) -> str: ...
+    - class AnthropicCompletion: async def __call__(...) -> str: ...
+    Both work as CompletionFn without explicitly inheriting from it.
+    """
     async def __call__(
         self, messages: list[Message], config: LLMConfig
     ) -> str: ...
@@ -47,11 +70,18 @@ async def zero_shot_classify(
     """
     Classify a support ticket with no examples — just clear instructions.
     Works well for common categories the model has seen in training.
+
+    PYTHON PATTERN: async def + await
+    - All LLM calls should be async (they're network I/O)
+    - Call with: result = await zero_shot_classify(...)
+    - Or run with: asyncio.run(zero_shot_classify(...))
     """
+    # PYTHON: Build list of Message objects (dataclass instances)
+    # Using multi-line string in parentheses for clean formatting
     messages = [
         Message(
-            role="system",
-            content=(
+            role="system",  # Literal type enforces valid values
+            content=(  # Parentheses allow multi-line string without \
                 "You are a support ticket classifier. Classify each ticket "
                 "into exactly one category:\n"
                 "- billing\n- technical\n- account\n- general\n\n"
@@ -61,6 +91,8 @@ async def zero_shot_classify(
         Message(role="user", content=ticket_text),
     ]
 
+    # PYTHON: await = wait for async function to complete
+    # Returns a string (the classification category)
     return await complete(messages, LLMConfig(model="gpt-4o", temperature=0))
 
 
@@ -132,11 +164,17 @@ async def chain_of_thought(
         Message(role="user", content=question),
     ]
 
+    # Call LLM with JSON output format enforced
     raw = await complete(
         messages,
         LLMConfig(model="gpt-4o", temperature=0, response_format="json_object"),
     )
-    data = json.loads(raw)
+
+    # PYTHON: Parse JSON string to dict
+    data = json.loads(raw)  # '{"reasoning": "...", ...}' -> {"reasoning": "...", ...}
+
+    # PYTHON: **data unpacks dict as keyword arguments
+    # Equivalent to: ReasonedAnswer(reasoning=data["reasoning"], answer=data["answer"], ...)
     return ReasonedAnswer(**data)
 
 
@@ -333,6 +371,13 @@ async def review_code(
         LLMConfig(model="gpt-4o", temperature=0, response_format="json_object"),
     )
     data = json.loads(raw)
+
+    # PYTHON: List comprehension to convert list of dicts to list of dataclass objects
+    # [CodeIssue(**issue) for issue in data["issues"]]
+    # Equivalent to:
+    #   issues = []
+    #   for issue in data["issues"]:
+    #       issues.append(CodeIssue(**issue))
     return CodeReviewResult(
         issues=[CodeIssue(**issue) for issue in data["issues"]],
         overall_assessment=data["overall_assessment"],
