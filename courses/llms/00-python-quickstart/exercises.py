@@ -19,8 +19,8 @@ def build_prompt(system_message: str, user_message: str) -> str:
         build_prompt("You are helpful", "Hello")
         -> "SYSTEM: You are helpful\n\nUSER: Hello"
     """
-    # TODO: Implement using f-strings
-    pass
+    prompt = f"SYSTEM: {system_message}\n\nUSER: {user_message}"
+    return prompt
 
 
 def count_tokens_estimate(text: str) -> int:
@@ -30,8 +30,7 @@ def count_tokens_estimate(text: str) -> int:
     Example:
         count_tokens_estimate("Hello world")  -> 2
     """
-    # TODO: Implement
-    pass
+    return len(text) // 4    
 
 
 def truncate_prompt(text: str, max_tokens: int) -> str:

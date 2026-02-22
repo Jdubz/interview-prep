@@ -17,6 +17,32 @@ env/
 .pytest_cache/
 .ruff_cache/
 
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+
+# Build output
+dist/
+build/
+.next/
+out/
+
+# Go
+bin/
+vendor/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
 # IDE
 .vscode/
 .idea/
@@ -32,3 +58,4 @@ Thumbs.db
 htmlcov/
 .coverage
 coverage.xml
+lcov.info
