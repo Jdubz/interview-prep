@@ -1,16 +1,48 @@
-# React + Vite
+# React Interview Prep
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Advanced React course for senior engineers. Each lesson covers what you need to explain and demonstrate in an interview, with optional deeper dives and cheat sheets for quick reference.
 
-Currently, two official plugins are available:
+> **For TypeScript engineers with 10+ years experience**: This skips the basics entirely. Assumes strong JS/TS fundamentals and production React experience.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## Lessons
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| # | Topic | What You'll Nail |
+|---|-------|-----------------|
+| 01 | [Hooks Deep Dive](src/lessons/01-hooks-deep-dive/) | useState pitfalls, useEffect mastery, rules of hooks internals |
+| 02 | [Custom Hooks](src/lessons/02-custom-hooks/) | Extraction patterns, composition, real-world hook implementations |
+| 03 | [Performance](src/lessons/03-performance/) | Memoization decision-making, React Compiler, profiling, virtualization |
+| 04 | [Advanced Patterns](src/lessons/04-advanced-patterns/) | Compound components, polymorphic types, headless UI, error boundaries |
+| 05 | [State Management](src/lessons/05-state-management/) | Zustand vs Jotai vs Redux, TanStack Query, state colocation |
+| 06 | [RSC & Suspense](src/lessons/06-rsc-and-suspense/) | Server components, streaming SSR, Next.js App Router, caching |
+| 07 | [Testing](src/lessons/07-testing/) | RTL patterns, MSW mocking, async testing, accessibility |
+| 08 | [React Internals](src/lessons/08-react-internals/) | Fiber architecture, reconciliation, concurrent rendering, scheduler |
 
-## Expanding the ESLint configuration
+## Content Per Lesson
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Each lesson directory contains:
+
+- **`README.md`** — Core interview knowledge. Concise, pattern-focused, interview-ready.
+- **`deep-dive.md`** — Optional extended content. Internals, edge cases, advanced patterns.
+- **`cheat-sheet.md`** — Quick reference card. Syntax, APIs, gotchas — scannable during prep.
+
+## Interactive Demos
+
+The Vite app (`npm run dev`) has interactive component demos for hands-on practice:
+
+```bash
+cd courses/react
+npm install
+npm run dev
+```
+
+Currently implemented: Lesson 02 (Custom Hooks) with useFetch and usePrevious demos.
+
+## Study Strategy
+
+**Quick prep (4-6 hours)**: Read the README.md for each lesson + review cheat sheets before the interview.
+
+**Deep prep (12-16 hours)**: Work through all READMEs, then deep-dive.md for your weaker areas.
+
+**During the interview**: Cheat sheets are designed to be scannable for quick refreshers.
