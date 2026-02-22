@@ -68,10 +68,31 @@ Advanced Python backend development with FastAPI. Covers async patterns, Pydanti
 
 ---
 
+## Content Per Module
+
+Each module directory contains:
+
+- **`README.md`** — Core interview knowledge. Concise, pattern-focused, interview-ready.
+- **`deep-dive.md`** — Optional extended content. Internals, edge cases, advanced patterns.
+- **`cheat-sheet.md`** — Quick reference card. Syntax, APIs, gotchas — scannable during prep.
+- **`examples.py`** — Complete, runnable production patterns. Study and run these.
+- **`exercises.py`** — Skeleton functions with TODOs. Implement to test your knowledge.
+
+## Projects
+
+Complete mini-applications that tie multiple modules together:
+
+| Project | Covers | Description |
+|---------|--------|-------------|
+| [bookmark-api](projects/bookmark-api/) | Modules 01-04, 06 | Full CRUD API with JWT auth, filtering, pagination, and test suite |
+| [task-queue-service](projects/task-queue-service/) | Modules 02, 05, 07 | Async task processing with SSE streaming, health checks, and metrics |
+
+---
+
 ## Prerequisites
 - Solid understanding of REST API design
 - Experience with at least one ORM (Prisma, TypeORM, etc.)
 - Familiarity with Python basics (see `courses/llms/00-python-quickstart/` if needed)
 
 ## Status
-**Scaffolded** — module outlines complete, content to be written.
+**Content complete** — all modules written with exercises, examples, and projects.

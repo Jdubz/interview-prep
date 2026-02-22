@@ -1,0 +1,306 @@
+"""
+Module 04: Authentication & Authorization -- Exercises
+======================================================
+Complete each exercise by replacing TODO comments with working code.
+Only stdlib (hmac, hashlib, json, base64, time, secrets) + FastAPI/Pydantic.
+
+Run tests:  python exercises.py
+Run API:    uvicorn exercises:app --reload
+"""
+import base64, hashlib, hmac, json, secrets, time
+from typing import Optional
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.security import APIKeyHeader, OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from pydantic import BaseModel
+
+# =============================================================================
+# SHARED UTILITIES (provided -- do not modify)
+# =============================================================================
+SECRET_KEY = "exercise-secret-key-do-not-use-in-prod"
+ACCESS_TOKEN_EXPIRE_MINUTES = 15
+REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+def _b64url_encode(data: bytes) -> str:
+    """Base64url encode without padding (per JWT spec, RFC 7515)."""
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+def _b64url_decode(s: str) -> bytes:
+    """Base64url decode, re-adding padding as needed."""
+    s += "=" * (4 - len(s) % 4) if len(s) % 4 else ""
+    return base64.urlsafe_b64decode(s)
+
+# --- In-memory user store ---
+class UserInDB(BaseModel):
+    id: str
+    username: str
+    email: str
+    hashed_password: str
+    roles: list[str] = ["user"]
+    is_active: bool = True
+    api_key_hashes: list[str] = []
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+class UserResponse(BaseModel):
+    id: str
+    username: str
+    email: str
+    roles: list[str]
+
+_users_db: dict[str, UserInDB] = {}
+_revoked_tokens: set[str] = set()
+
+# Pre-seed test users (admin + viewer)
+def _seed(uid, name, email, pw, roles):
+    s = secrets.token_bytes(16)
+    h = hashlib.pbkdf2_hmac("sha256", pw.encode(), s, 100_000)
+    _users_db[uid] = UserInDB(id=uid, username=name, email=email,
+                               hashed_password=f"{s.hex()}${h.hex()}", roles=roles)
+_seed("admin-001", "admin", "admin@example.com", "adminpass", ["admin", "user"])
+_seed("viewer-001", "viewer", "viewer@example.com", "viewerpass", ["viewer"])
+
+def _get_user_by_username(username: str) -> Optional[UserInDB]:
+    return next((u for u in _users_db.values() if u.username == username), None)
+
+def verify_password(password: str, stored: str) -> bool:
+    salt_hex, _ = stored.split("$")
+    salt = bytes.fromhex(salt_hex)
+    pw_hash = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 100_000)
+    return hmac.compare_digest(f"{salt_hex}${pw_hash.hex()}", stored)
+
+# =============================================================================
+# EXERCISE 1: Implement JWT Token Creation with Expiration
+# =============================================================================
+
+def create_jwt(payload: dict, secret: str = SECRET_KEY) -> str:
+    """Create a JWT (HMAC-SHA256). header.payload.signature, each base64url-encoded.
+    Steps: build header {"alg":"HS256","typ":"JWT"}, b64url-encode header+payload JSON
+    (compact separators), HMAC-sign, return 3-part dot-separated string."""
+    # TODO: Implement JWT creation
+    raise NotImplementedError("Complete Exercise 1")
+
+def decode_jwt(token: str, secret: str = SECRET_KEY) -> dict:
+    """Decode and verify JWT. Split on ".", recompute HMAC, compare with
+    hmac.compare_digest, decode payload, check "exp" claim. Raise ValueError
+    on bad signature ("Invalid token signature") or expiry ("Token has expired")."""
+    # TODO: Implement JWT verification
+    raise NotImplementedError("Complete Exercise 1")
+
+def create_access_token(data: dict) -> str:
+    """Short-lived token. Merge data with exp (ACCESS_TOKEN_EXPIRE_MINUTES*60 from now),
+    type="access", jti=secrets.token_hex(8). Call create_jwt()."""
+    # TODO: Build payload and call create_jwt()
+    raise NotImplementedError("Complete Exercise 1")
+
+def create_refresh_token(data: dict) -> str:
+    """Long-lived token. Merge data with exp (REFRESH_TOKEN_EXPIRE_DAYS*86400 from now),
+    type="refresh", jti=secrets.token_hex(8). Call create_jwt()."""
+    # TODO: Build payload and call create_jwt()
+    raise NotImplementedError("Complete Exercise 1")
+
+# =============================================================================
+# EXERCISE 2: Build the Auth Dependency Chain (3 layers)
+# =============================================================================
+app = FastAPI(title="Auth Exercises", version="1.0.0")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserInDB:
+    """Layer 1: Decode JWT, verify type=="access", look up user by payload["sub"].
+    Catch ValueError -> 401. User not found -> 401."""
+    # TODO: Implement token validation and user lookup
+    raise NotImplementedError("Complete Exercise 2")
+
+async def get_active_user(current_user: UserInDB = Depends(get_current_user)) -> UserInDB:
+    """Layer 2: Reject inactive users (403 "Inactive user")."""
+    # TODO: Check is_active
+    raise NotImplementedError("Complete Exercise 2")
+
+def require_role(*allowed_roles: str):
+    """Layer 3 (factory): inner async dep on get_active_user, check set intersection
+    of user.roles & allowed_roles, raise 403 if empty, return user."""
+    # TODO: Define and return inner dependency function
+    raise NotImplementedError("Complete Exercise 2")
+
+# =============================================================================
+# EXERCISE 3: Add Role-Based Route Protection
+# =============================================================================
+ROLE_PERMISSIONS: dict[str, set[str]] = {
+    "admin": {"users:read", "users:write", "users:delete", "posts:read", "posts:write"},
+    "user":  {"posts:read", "posts:write", "users:read"},
+    "viewer": {"posts:read", "users:read"},
+}
+
+def require_permission(*permissions: str):
+    """Dependency factory: collect perms from user's roles via ROLE_PERMISSIONS,
+    compute missing = required - granted, raise 403 if any missing."""
+    # TODO: Define inner async function, collect perms, check, return user
+    raise NotImplementedError("Complete Exercise 3")
+
+# --- Routes (work once Exercises 1-3 are done) ---
+
+@app.post("/auth/token", response_model=TokenResponse)
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = _get_user_by_username(form_data.username)
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Incorrect username or password",
+                            headers={"WWW-Authenticate": "Bearer"})
+    return TokenResponse(
+        access_token=create_access_token({"sub": user.id, "roles": user.roles}),
+        refresh_token=create_refresh_token({"sub": user.id}))
+
+@app.get("/users/me", response_model=UserResponse)
+async def read_me(user: UserInDB = Depends(get_active_user)):
+    return UserResponse(id=user.id, username=user.username, email=user.email, roles=user.roles)
+
+@app.get("/admin/users", response_model=list[UserResponse])
+async def list_all_users(user: UserInDB = Depends(require_role("admin"))):
+    return [UserResponse(id=u.id, username=u.username, email=u.email, roles=u.roles)
+            for u in _users_db.values()]
+
+@app.delete("/admin/users/{user_id}")
+async def delete_user(user_id: str, admin: UserInDB = Depends(require_permission("users:delete"))):
+    if user_id not in _users_db:
+        raise HTTPException(status_code=404, detail="User not found")
+    del _users_db[user_id]
+    return {"detail": "User deleted"}
+
+@app.get("/posts")
+async def list_posts(user: UserInDB = Depends(require_permission("posts:read"))):
+    return {"posts": [], "viewer": user.username}
+
+# =============================================================================
+# EXERCISE 4: Implement API Key Validation with Hashing
+# =============================================================================
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+def generate_api_key() -> tuple[str, str]:
+    """Generate (raw_key, sha256_hash). Use secrets.token_urlsafe(32) + hashlib.sha256."""
+    # TODO: Generate and return (raw_key, hashed_key)
+    raise NotImplementedError("Complete Exercise 4")
+
+async def get_api_key_user(api_key: Optional[str] = Depends(api_key_header)) -> Optional[UserInDB]:
+    """Validate X-API-Key: None->None, hash with SHA-256, search _users_db for
+    matching api_key_hashes. Found+active->user, found+inactive->403, missing->401."""
+    # TODO: Validate API key
+    raise NotImplementedError("Complete Exercise 4")
+
+@app.post("/api-keys")
+async def create_api_key(user: UserInDB = Depends(get_active_user)):
+    raw, hashed = generate_api_key()
+    user.api_key_hashes.append(hashed)
+    return {"key": raw, "message": "Store securely. Will not be shown again."}
+
+@app.get("/api-keys/test")
+async def test_api_key(user: Optional[UserInDB] = Depends(get_api_key_user)):
+    if user is None:
+        raise HTTPException(status_code=401, detail="Provide X-API-Key header")
+    return {"message": f"Authenticated as {user.username} via API key"}
+
+# =============================================================================
+# EXERCISE 5: Create a Token Refresh Endpoint
+# =============================================================================
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+@app.post("/auth/token/refresh", response_model=TokenResponse)
+async def refresh_token(data: RefreshRequest):
+    """Token rotation: decode refresh token, verify type=="refresh", check jti not
+    in _revoked_tokens, revoke old jti, look up user, return new token pair."""
+    # TODO: Implement token refresh with rotation
+    raise NotImplementedError("Complete Exercise 5")
+
+# =============================================================================
+# TESTS (run with: python exercises.py)
+# =============================================================================
+def _run_test(name, fn):
+    try:
+        fn()
+        print(f"  PASSED: {name}")
+        return True
+    except NotImplementedError:
+        print(f"  SKIPPED: {name}")
+        return None
+    except (AssertionError, Exception) as e:
+        print(f"  FAILED: {name} -- {e}")
+        return False
+
+def test_ex1_create_jwt():
+    token = create_jwt({"sub": "user123", "exp": time.time() + 300})
+    parts = token.split(".")
+    assert len(parts) == 3, f"Expected 3 parts, got {len(parts)}"
+    header = json.loads(_b64url_decode(parts[0]))
+    assert header == {"alg": "HS256", "typ": "JWT"}
+
+def test_ex1_decode_jwt():
+    payload = {"sub": "test-user", "role": "admin", "exp": time.time() + 300}
+    decoded = decode_jwt(create_jwt(payload))
+    assert decoded["sub"] == "test-user" and decoded["role"] == "admin"
+
+def test_ex1_expired_token():
+    try:
+        decode_jwt(create_jwt({"sub": "u", "exp": time.time() - 10}))
+        assert False, "Should reject expired token"
+    except ValueError as e:
+        assert "expire" in str(e).lower()
+
+def test_ex1_tampered_token():
+    token = create_jwt({"sub": "user", "exp": time.time() + 300})
+    parts = token.split(".")
+    fake = _b64url_encode(json.dumps({"sub": "admin", "exp": time.time() + 300}).encode())
+    try:
+        decode_jwt(f"{parts[0]}.{fake}.{parts[2]}")
+        assert False, "Should reject tampered token"
+    except ValueError as e:
+        assert "signature" in str(e).lower()
+
+def test_ex1_access_token():
+    payload = decode_jwt(create_access_token({"sub": "u1", "roles": ["user"]}))
+    assert payload["type"] == "access" and payload["sub"] == "u1" and "jti" in payload
+
+def test_ex1_refresh_token():
+    r = decode_jwt(create_refresh_token({"sub": "u1"}))
+    a = decode_jwt(create_access_token({"sub": "u1"}))
+    assert r["type"] == "refresh" and r["exp"] > a["exp"]
+
+def test_ex4_generate_api_key():
+    raw, hashed = generate_api_key()
+    assert len(raw) > 20 and len(hashed) == 64
+    assert hashlib.sha256(raw.encode()).hexdigest() == hashed
+
+def test_ex4_unique_keys():
+    assert len({generate_api_key()[0] for _ in range(10)}) == 10
+
+if __name__ == "__main__":
+    print("Auth Exercises -- Validation Tests\n" + "=" * 50)
+    groups = {
+        "Exercise 1 (JWT)": [
+            ("Create JWT format", test_ex1_create_jwt),
+            ("Decode roundtrip", test_ex1_decode_jwt),
+            ("Reject expired", test_ex1_expired_token),
+            ("Reject tampered", test_ex1_tampered_token),
+            ("Access token fields", test_ex1_access_token),
+            ("Refresh token fields", test_ex1_refresh_token),
+        ],
+        "Exercise 4 (API Keys)": [
+            ("Generate key pair", test_ex4_generate_api_key),
+            ("Keys are unique", test_ex4_unique_keys),
+        ],
+    }
+    passed = skipped = failed = 0
+    for section, tests in groups.items():
+        print(f"\n--- {section} ---")
+        for name, fn in tests:
+            r = _run_test(name, fn)
+            if r is True: passed += 1
+            elif r is None: skipped += 1
+            else: failed += 1
+
+    print(f"\n--- Exercises 2, 3, 5 (API-based) ---")
+    print("  Start server: uvicorn exercises:app --reload")
+    print("  POST /auth/token  username=admin password=adminpass")
+    print("  Authorize in Swagger, then test protected routes.")
+    print(f"\n{'=' * 50}")
+    print(f"Results: {passed} passed, {failed} failed, {skipped} skipped")
