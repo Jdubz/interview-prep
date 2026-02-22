@@ -1,551 +1,680 @@
 """
-Prompt Engineering Examples
+Module 02: Prompt Engineering — Production-Ready Patterns
 
-Annotated Python examples demonstrating core prompt engineering techniques.
-Uses a generic LLM interface — swap in any provider (OpenAI, Anthropic, etc.).
+Complete, runnable examples demonstrating core prompt engineering techniques.
+Each pattern is designed for real production use cases.
 
-PYTHON CONCEPTS DEMONSTRATED:
-- dataclasses: Clean data structures without boilerplate (@dataclass decorator)
-- Protocols: Structural typing for flexible interfaces (like TypeScript interfaces)
-- Type hints: list[str], dict, Literal, async/await
-- Async functions: All LLM calls are async (non-blocking I/O)
-- F-strings: Dynamic prompt building
-- List comprehensions: Data transformation
-- Pattern matching with conditionals
+Requirements:
+    pip install openai anthropic pydantic
 
-This file is meant to be READ, not run. To make it runnable, implement the
-CompletionFn protocol with your chosen LLM provider (OpenAI, Anthropic, etc.).
+These examples use OpenAI's API by default. Swap the client and model
+for Anthropic or any OpenAI-compatible endpoint.
 """
 
-from dataclasses import dataclass  # Eliminates class boilerplate
-from typing import Protocol, Literal  # Type system features
-import json  # For parsing/generating JSON
+import asyncio
+import json
+import re
+from collections import Counter
+from dataclasses import dataclass
+from typing import Any
+
+from openai import AsyncOpenAI
+from pydantic import BaseModel, ValidationError
+
+client = AsyncOpenAI()
+DEFAULT_MODEL = "gpt-4o"
 
 
 # ---------------------------------------------------------------------------
-# Generic LLM Interface
+# 1. Classification with Few-Shot Examples and Structured Output
 # ---------------------------------------------------------------------------
 
-@dataclass
-class Message:
-    """A single message in a conversation."""
-    role: Literal["system", "user", "assistant"]
-    content: str
-
-
-@dataclass
-class LLMConfig:
-    """Minimal configuration for an LLM call."""
-    model: str
-    temperature: float = 1.0
-    max_tokens: int | None = None
-    response_format: Literal["json_object", "text"] | None = None
-
-
-class CompletionFn(Protocol):
-    """
-    Generic completion function — implement with your provider of choice.
-
-    PYTHON NOTE: Protocol = structural typing (like TypeScript interfaces).
-    Any object with a __call__ method matching this signature will work.
-    No inheritance required! This makes the code provider-agnostic.
-
-    Example implementations:
-    - class OpenAICompletion: async def __call__(...) -> str: ...
-    - class AnthropicCompletion: async def __call__(...) -> str: ...
-    Both work as CompletionFn without explicitly inheriting from it.
-    """
-    async def __call__(
-        self, messages: list[Message], config: LLMConfig
-    ) -> str: ...
-
-
-# ---------------------------------------------------------------------------
-# Example 1: Zero-Shot Classification
-# ---------------------------------------------------------------------------
-
-async def zero_shot_classify(
-    complete: CompletionFn, ticket_text: str
-) -> str:
-    """
-    Classify a support ticket with no examples — just clear instructions.
-    Works well for common categories the model has seen in training.
-
-    PYTHON PATTERN: async def + await
-    - All LLM calls should be async (they're network I/O)
-    - Call with: result = await zero_shot_classify(...)
-    - Or run with: asyncio.run(zero_shot_classify(...))
-    """
-    # PYTHON: Build list of Message objects (dataclass instances)
-    # Using multi-line string in parentheses for clean formatting
-    messages = [
-        Message(
-            role="system",  # Literal type enforces valid values
-            content=(  # Parentheses allow multi-line string without \
-                "You are a support ticket classifier. Classify each ticket "
-                "into exactly one category:\n"
-                "- billing\n- technical\n- account\n- general\n\n"
-                "Respond with ONLY the category name, nothing else."
-            ),
-        ),
-        Message(role="user", content=ticket_text),
-    ]
-
-    # PYTHON: await = wait for async function to complete
-    # Returns a string (the classification category)
-    return await complete(messages, LLMConfig(model="gpt-4o", temperature=0))
-
-
-# ---------------------------------------------------------------------------
-# Example 2: Few-Shot Classification
-# ---------------------------------------------------------------------------
-
-async def few_shot_classify(
-    complete: CompletionFn, ticket_text: str
-) -> str:
-    """
-    When zero-shot isn't reliable enough, few-shot examples anchor the model's
-    understanding of each category — especially useful for ambiguous cases.
-    """
-    messages = [
-        Message(
-            role="system",
-            content="Classify support tickets. Respond with only the category.",
-        ),
-        # Few-shot examples as user/assistant pairs
-        Message(role="user", content="I was charged twice for my subscription this month"),
-        Message(role="assistant", content="billing"),
-        Message(role="user", content="The app crashes whenever I try to upload a file larger than 5MB"),
-        Message(role="assistant", content="technical"),
-        Message(role="user", content="I need to change the email address on my account"),
-        Message(role="assistant", content="account"),
-        Message(role="user", content="What are your business hours?"),
-        Message(role="assistant", content="general"),
-        # Actual input
-        Message(role="user", content=ticket_text),
-    ]
-
-    return await complete(messages, LLMConfig(model="gpt-4o", temperature=0))
-
-
-# ---------------------------------------------------------------------------
-# Example 3: Chain-of-Thought Reasoning
-# ---------------------------------------------------------------------------
-
-@dataclass
-class ReasonedAnswer:
+class ClassificationResult(BaseModel):
+    """Pydantic model enforcing the output schema for classification."""
+    category: str
+    confidence: str  # "high", "medium", "low"
     reasoning: str
-    answer: str
-    confidence: Literal["high", "medium", "low"]
 
 
-async def chain_of_thought(
-    complete: CompletionFn, question: str
-) -> ReasonedAnswer:
+CLASSIFICATION_SYSTEM_PROMPT = """\
+You are a support ticket classifier. Classify each ticket into exactly one category.
+
+Categories:
+- billing: payment issues, charges, invoices, refunds, subscription management
+- technical: bugs, errors, crashes, performance problems, feature malfunctions
+- account: login, password, profile, settings, permissions
+- general: questions, feedback, feature requests, anything else
+
+Few-shot examples:
+
+Ticket: "I was charged $49.99 but my plan is $29.99"
+Category: billing
+Confidence: high
+Reasoning: Explicit mention of charges and pricing discrepancy.
+
+Ticket: "App freezes for 10 seconds when I open the dashboard"
+Category: technical
+Confidence: high
+Reasoning: Performance issue with specific reproducible behavior.
+
+Ticket: "I can't reset my password — the email never arrives"
+Category: account
+Confidence: high
+Reasoning: Password reset flow failure, core account access issue.
+
+Ticket: "Can you add dark mode?"
+Category: general
+Confidence: high
+Reasoning: Feature request, not an issue with existing functionality.
+
+Ticket: "I want to cancel my account and get a refund for this month"
+Category: billing
+Confidence: medium
+Reasoning: Involves both account cancellation and refund. Billing takes priority because the refund is the actionable item.
+
+Return your response as JSON with keys: category, confidence, reasoning.
+"""
+
+
+async def classify_ticket(ticket_text: str) -> ClassificationResult:
     """
-    Force the model to reason step-by-step before answering.
-    Dramatically improves accuracy on logic/math/multi-step problems.
-    """
-    messages = [
-        Message(
-            role="system",
-            content=(
-                "You are an analytical assistant. For every question:\n"
-                "1. Break down the problem step by step\n"
-                "2. Show your reasoning explicitly\n"
-                "3. State your final answer\n"
-                "4. Rate your confidence\n\n"
-                "Respond in JSON:\n"
-                '{\n  "reasoning": "step-by-step explanation",\n'
-                '  "answer": "final answer",\n'
-                '  "confidence": "high" | "medium" | "low"\n}'
-            ),
-        ),
-        Message(role="user", content=question),
-    ]
+    Classify a support ticket using few-shot prompting with structured output.
 
-    # Call LLM with JSON output format enforced
-    raw = await complete(
-        messages,
-        LLMConfig(model="gpt-4o", temperature=0, response_format="json_object"),
+    Uses OpenAI's json_schema response format for guaranteed valid JSON.
+    The few-shot examples in the system prompt establish the pattern for
+    edge cases (like the cancel+refund example showing how to handle ambiguity).
+    """
+    response = await client.chat.completions.create(
+        model=DEFAULT_MODEL,
+        temperature=0,  # Deterministic for classification consistency
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "classification",
+                "strict": True,
+                "schema": ClassificationResult.model_json_schema(),
+            },
+        },
+        messages=[
+            {"role": "system", "content": CLASSIFICATION_SYSTEM_PROMPT},
+            {"role": "user", "content": f"Ticket: {ticket_text}"},
+        ],
     )
 
-    # PYTHON: Parse JSON string to dict
-    data = json.loads(raw)  # '{"reasoning": "...", ...}' -> {"reasoning": "...", ...}
-
-    # PYTHON: **data unpacks dict as keyword arguments
-    # Equivalent to: ReasonedAnswer(reasoning=data["reasoning"], answer=data["answer"], ...)
-    return ReasonedAnswer(**data)
+    return ClassificationResult.model_validate_json(
+        response.choices[0].message.content
+    )
 
 
 # ---------------------------------------------------------------------------
-# Example 4: Structured Data Extraction with Delimiters
+# 2. Entity Extraction with JSON Schema Enforcement
 # ---------------------------------------------------------------------------
 
-@dataclass
-class ExtractedEntities:
-    people: list[str]
+class Person(BaseModel):
+    name: str
+    role: str | None = None
+
+
+class ExtractionResult(BaseModel):
+    """Schema for entity extraction. Enforced at the API level."""
+    people: list[Person]
     organizations: list[str]
     dates: list[str]
+    monetary_values: list[str]
     locations: list[str]
-    topics: list[str]
 
 
-async def extract_entities(
-    complete: CompletionFn, document: str
-) -> ExtractedEntities:
+EXTRACTION_SYSTEM_PROMPT = """\
+Extract all entities from the provided document. Follow these rules:
+- Only extract explicitly stated information. Do not infer.
+- Dates must be in ISO 8601 format (YYYY-MM-DD).
+- Monetary values in original currency with symbol (e.g., $50M, EUR 1,200).
+- If a field has no entities, use an empty array.
+- For people, include their role/title if mentioned.
+
+The document will be wrapped in <document> tags.
+"""
+
+
+async def extract_entities(text: str) -> ExtractionResult:
     """
-    Extract structured data from unstructured text.
-    Uses XML-style delimiters to clearly separate instructions from data,
-    and enforces JSON output for programmatic consumption.
+    Extract structured entities from unstructured text.
+
+    Uses XML delimiter tags to clearly separate the document from instructions.
+    The json_schema response format guarantees the output matches our Pydantic model.
     """
+    response = await client.chat.completions.create(
+        model=DEFAULT_MODEL,
+        temperature=0,
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "entity_extraction",
+                "strict": True,
+                "schema": ExtractionResult.model_json_schema(),
+            },
+        },
+        messages=[
+            {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": f"<document>\n{text}\n</document>",
+            },
+        ],
+    )
+
+    return ExtractionResult.model_validate_json(
+        response.choices[0].message.content
+    )
+
+
+# ---------------------------------------------------------------------------
+# 3. Multi-Step Prompt Chain: Analyze -> Plan -> Execute
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ChainResult:
+    analysis: str
+    plan: str
+    execution: str
+
+
+async def analyze_and_improve_code(code: str) -> ChainResult:
+    """
+    Three-step prompt chain for code improvement.
+
+    Step 1 (Analyze): Identify issues — uses a critical, analytical persona.
+    Step 2 (Plan): Create improvement plan — uses the analysis as input.
+    Step 3 (Execute): Apply the plan — produces the final improved code.
+
+    Each step is a focused prompt that does one thing well. Different steps
+    could use different models (e.g., cheaper model for analysis, stronger
+    for code generation).
+    """
+
+    # Step 1: Analyze — identify issues in the code
+    analysis_response = await client.chat.completions.create(
+        model=DEFAULT_MODEL,
+        temperature=0,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a senior code reviewer. Identify bugs, security "
+                    "issues, performance problems, and maintainability concerns. "
+                    "List each issue with severity (critical/high/medium/low) "
+                    "and a brief explanation. Be thorough but concise."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Review this code:\n\n```\n{code}\n```",
+            },
+        ],
+    )
+    analysis = analysis_response.choices[0].message.content
+
+    # Step 2: Plan — create an improvement plan based on the analysis
+    # The analysis output becomes input to this step
+    plan_response = await client.chat.completions.create(
+        model=DEFAULT_MODEL,
+        temperature=0,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a software architect. Given a code review, create "
+                    "a prioritized improvement plan. For each change: state what "
+                    "to change, why, and the expected impact. Order by priority "
+                    "(critical fixes first)."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Original code:\n```\n{code}\n```\n\n"
+                    f"Code review findings:\n{analysis}\n\n"
+                    "Create an improvement plan."
+                ),
+            },
+        ],
+    )
+    plan = plan_response.choices[0].message.content
+
+    # Step 3: Execute — apply the plan to produce improved code
+    execution_response = await client.chat.completions.create(
+        model=DEFAULT_MODEL,
+        temperature=0.1,  # Slight variation for code generation
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a senior engineer implementing code improvements. "
+                    "Apply the improvement plan to the original code. Return "
+                    "only the improved code with brief inline comments explaining "
+                    "each change. Do not include explanatory text outside the code."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Original code:\n```\n{code}\n```\n\n"
+                    f"Improvement plan:\n{plan}\n\n"
+                    "Implement all improvements."
+                ),
+            },
+        ],
+    )
+    execution = execution_response.choices[0].message.content
+
+    return ChainResult(analysis=analysis, plan=plan, execution=execution)
+
+
+# ---------------------------------------------------------------------------
+# 4. Summarization with Configurable Detail Level
+# ---------------------------------------------------------------------------
+
+SUMMARY_TEMPLATE = """\
+Summarize the following text at the "{detail_level}" detail level.
+
+Detail levels:
+- brief: 1-2 sentences capturing the single most important point
+- standard: 3-5 bullet points covering key information
+- detailed: comprehensive summary with sections for key findings,
+  implications, and action items (8-12 bullet points)
+
+Audience: {audience}
+
+<text>
+{text}
+</text>
+"""
+
+
+async def summarize(
+    text: str,
+    detail_level: str = "standard",
+    audience: str = "technical team",
+) -> str:
+    """
+    Summarization with configurable detail and audience.
+
+    The template uses named placeholders for detail level and audience,
+    demonstrating prompt templating. The detail level descriptions in the
+    prompt itself ensure the model understands the expected output length
+    and structure for each level.
+    """
+    prompt = SUMMARY_TEMPLATE.format(
+        text=text,
+        detail_level=detail_level,
+        audience=audience,
+    )
+
+    response = await client.chat.completions.create(
+        model=DEFAULT_MODEL,
+        temperature=0.3,  # Low creativity, but not fully deterministic
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    return response.choices[0].message.content
+
+
+# ---------------------------------------------------------------------------
+# 5. Prompt Template System with Variable Injection
+# ---------------------------------------------------------------------------
+
+class PromptTemplate:
+    """
+    A minimal prompt template system for production use.
+
+    Separates the template (version-controlled, reviewed) from the variables
+    (runtime data). Supports validation of required variables and optional
+    system prompts.
+    """
+
+    def __init__(
+        self,
+        template: str,
+        system_prompt: str | None = None,
+        required_vars: list[str] | None = None,
+    ):
+        self.template = template
+        self.system_prompt = system_prompt
+        # Auto-detect required variables from {placeholders} in the template
+        self.required_vars = required_vars or re.findall(
+            r"\{(\w+)\}", template
+        )
+
+    def render(self, **kwargs: Any) -> list[dict[str, str]]:
+        """Render the template with variables. Returns messages list."""
+        missing = set(self.required_vars) - set(kwargs.keys())
+        if missing:
+            raise ValueError(f"Missing required variables: {missing}")
+
+        messages = []
+        if self.system_prompt:
+            rendered_system = self.system_prompt.format(**kwargs)
+            messages.append({"role": "system", "content": rendered_system})
+
+        rendered_user = self.template.format(**kwargs)
+        messages.append({"role": "user", "content": rendered_user})
+
+        return messages
+
+    async def execute(
+        self,
+        model: str = DEFAULT_MODEL,
+        temperature: float = 0,
+        **kwargs: Any,
+    ) -> str:
+        """Render and execute the prompt in one call."""
+        messages = self.render(**kwargs)
+        response = await client.chat.completions.create(
+            model=model,
+            temperature=temperature,
+            messages=messages,
+        )
+        return response.choices[0].message.content
+
+
+# Pre-built templates for common tasks
+TEMPLATES = {
+    "classify": PromptTemplate(
+        system_prompt=(
+            "Classify the input into exactly one of these categories: "
+            "{categories}. Respond with ONLY the category name."
+        ),
+        template="{input}",
+        required_vars=["categories", "input"],
+    ),
+    "extract_json": PromptTemplate(
+        system_prompt=(
+            "Extract information from the input. Return valid JSON "
+            "matching this schema:\n{schema}\n\n"
+            "Only extract explicitly stated information."
+        ),
+        template="<document>\n{input}\n</document>",
+        required_vars=["schema", "input"],
+    ),
+    "qa_with_context": PromptTemplate(
+        system_prompt=(
+            "Answer the question using ONLY the provided context. "
+            "If the answer is not in the context, say so. "
+            "Cite sources using [Source N] notation."
+        ),
+        template=(
+            "<context>\n{context}\n</context>\n\n"
+            "Question: {question}"
+        ),
+        required_vars=["context", "question"],
+    ),
+}
+
+
+# ---------------------------------------------------------------------------
+# 6. Self-Consistency: Multiple Samples + Majority Voting
+# ---------------------------------------------------------------------------
+
+COT_PROMPT_TEMPLATE = """\
+{question}
+
+Think through this step by step, showing your reasoning.
+After your analysis, state your final answer on the last line as:
+ANSWER: <your answer>
+"""
+
+
+def extract_answer(response_text: str) -> str | None:
+    """Extract the final answer from a CoT response."""
+    match = re.search(r"ANSWER:\s*(.+?)(?:\n|$)", response_text, re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+    # Fallback: return the last non-empty line
+    lines = [line.strip() for line in response_text.strip().split("\n") if line.strip()]
+    return lines[-1] if lines else None
+
+
+async def self_consistency(
+    question: str,
+    n_samples: int = 5,
+    temperature: float = 0.7,
+) -> dict[str, Any]:
+    """
+    Self-consistency implementation: sample multiple CoT paths, majority vote.
+
+    Key design decisions:
+    - temperature > 0 is required to get diverse reasoning paths
+    - Samples are sent in parallel to minimize latency
+    - The voting mechanism uses simple majority (ties broken by first occurrence)
+    - Returns both the answer and the full distribution for transparency
+
+    In production, you would also want:
+    - Confidence threshold (reject if no answer gets >50% of votes)
+    - Logging of all samples for debugging
+    - Cost monitoring (N samples = N * cost)
+    """
+    prompt = COT_PROMPT_TEMPLATE.format(question=question)
+
+    # Send all samples in parallel for minimum latency
+    tasks = [
+        client.chat.completions.create(
+            model=DEFAULT_MODEL,
+            temperature=temperature,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        for _ in range(n_samples)
+    ]
+    responses = await asyncio.gather(*tasks)
+
+    # Extract answers from each reasoning path
+    answers = []
+    reasoning_paths = []
+    for r in responses:
+        text = r.choices[0].message.content
+        reasoning_paths.append(text)
+        answer = extract_answer(text)
+        if answer:
+            answers.append(answer)
+
+    # Majority vote
+    if not answers:
+        return {
+            "answer": None,
+            "confidence": 0.0,
+            "distribution": {},
+            "n_samples": n_samples,
+            "n_valid": 0,
+        }
+
+    vote_counts = Counter(answers)
+    winner, winner_count = vote_counts.most_common(1)[0]
+
+    return {
+        "answer": winner,
+        "confidence": winner_count / len(answers),
+        "distribution": dict(vote_counts),
+        "n_samples": n_samples,
+        "n_valid": len(answers),
+        "reasoning_paths": reasoning_paths,  # For debugging
+    }
+
+
+# ---------------------------------------------------------------------------
+# 7. Retry-with-Feedback for Structured Output
+# ---------------------------------------------------------------------------
+
+async def extract_with_retry(
+    text: str,
+    schema: type[BaseModel],
+    max_retries: int = 3,
+) -> BaseModel | None:
+    """
+    Extract structured data with automatic retry on validation failure.
+
+    When the model produces invalid output, this feeds the validation error
+    back to the model so it can self-correct. This is more effective than
+    a blind retry because the model sees exactly what went wrong.
+
+    Pattern:
+    1. Send extraction prompt
+    2. Validate response against Pydantic schema
+    3. On failure: send the original prompt + previous response + error message
+    4. Repeat up to max_retries
+
+    In production, also consider:
+    - Logging each attempt for monitoring prompt quality
+    - Alerting if retry rate exceeds a threshold (signals prompt needs improvement)
+    - Falling back to a simpler schema or manual review after max retries
+    """
+    schema_json = json.dumps(schema.model_json_schema(), indent=2)
+
     messages = [
-        Message(
-            role="system",
-            content=(
-                "Extract named entities from the provided document.\n"
-                "Return a JSON object with these keys:\n"
-                "- people: array of person names\n"
-                "- organizations: array of org names\n"
-                "- dates: array of dates (ISO 8601 format when possible)\n"
-                "- locations: array of place names\n"
-                "- topics: array of key topics/subjects\n\n"
-                "If a category has no entities, return an empty array.\n"
-                "Return ONLY valid JSON."
+        {
+            "role": "system",
+            "content": (
+                "Extract structured data from the provided text. "
+                "Return valid JSON matching this schema:\n\n"
+                f"{schema_json}\n\n"
+                "Return ONLY the JSON object. No other text."
             ),
-        ),
-        Message(
-            role="user",
-            # Delimiters prevent document content from being confused with instructions
-            content=f"<document>\n{document}\n</document>\n\nExtract all entities from the document above.",
-        ),
+        },
+        {
+            "role": "user",
+            "content": f"<document>\n{text}\n</document>",
+        },
     ]
 
-    raw = await complete(
-        messages,
-        LLMConfig(model="gpt-4o", temperature=0, response_format="json_object"),
-    )
-    data = json.loads(raw)
-    return ExtractedEntities(**data)
+    for attempt in range(max_retries):
+        response = await client.chat.completions.create(
+            model=DEFAULT_MODEL,
+            temperature=0,
+            messages=messages,
+        )
 
+        raw_output = response.choices[0].message.content
 
-# ---------------------------------------------------------------------------
-# Example 5: Prompt Chaining — Multi-Step Pipeline
-# ---------------------------------------------------------------------------
+        try:
+            # Attempt to parse the JSON and validate against the schema
+            # Strip markdown code fences if the model wraps the JSON
+            cleaned = raw_output.strip()
+            if cleaned.startswith("```"):
+                cleaned = re.sub(r"^```\w*\n?", "", cleaned)
+                cleaned = re.sub(r"\n?```$", "", cleaned)
 
-@dataclass
-class SummaryResult:
-    key_points: list[str]
-    summary: str
-    quality_issues: list[str]
+            parsed = json.loads(cleaned)
+            return schema.model_validate(parsed)
 
+        except (json.JSONDecodeError, ValidationError) as e:
+            if attempt == max_retries - 1:
+                return None  # Give up after max retries
 
-async def chained_summarization(
-    complete: CompletionFn, document: str
-) -> SummaryResult:
-    """
-    Complex tasks are more reliable when broken into discrete steps.
-    Each step has a focused prompt, and outputs feed into the next step.
-
-    This pipeline: Document → Key Points → Quality Check → Final Summary
-    """
-    # Step 1: Extract key points
-    key_points_raw = await complete(
-        [
-            Message(
-                role="system",
-                content=(
-                    "Extract the 5-7 most important points from the document. "
-                    "Return as JSON: { \"points\": [\"...\", ...] }"
-                ),
-            ),
-            Message(role="user", content=f"<document>\n{document}\n</document>"),
-        ],
-        LLMConfig(model="gpt-4o", temperature=0, response_format="json_object"),
-    )
-    key_points: list[str] = json.loads(key_points_raw)["points"]
-
-    # Step 2: Quality check — are these points well-supported?
-    quality_raw = await complete(
-        [
-            Message(
-                role="system",
-                content=(
-                    "Review these key points against the source document.\n"
-                    "Flag any points that are:\n"
-                    "- Not directly supported by the text\n"
-                    "- Misleading or missing important nuance\n"
-                    "- Redundant with other points\n\n"
-                    'Return JSON: { "issues": ["..."], "approved_points": ["..."] }'
-                ),
-            ),
-            Message(
-                role="user",
-                content=(
-                    f"<document>\n{document}\n</document>\n\n"
-                    f"<key_points>\n{json.dumps(key_points, indent=2)}\n</key_points>"
-                ),
-            ),
-        ],
-        LLMConfig(model="gpt-4o", temperature=0, response_format="json_object"),
-    )
-    quality = json.loads(quality_raw)
-
-    # Step 3: Generate final summary from approved points only
-    bullet_points = "\n".join(f"- {p}" for p in quality["approved_points"])
-    summary = await complete(
-        [
-            Message(
-                role="system",
-                content=(
-                    "Write a concise 3-4 sentence summary based ONLY on the "
-                    "provided key points. Do not add information not in the points."
-                ),
-            ),
-            Message(role="user", content=f"Key points:\n{bullet_points}"),
-        ],
-        LLMConfig(model="gpt-4o", temperature=0.3),  # Slight creativity for natural prose
-    )
-
-    return SummaryResult(
-        key_points=quality["approved_points"],
-        summary=summary,
-        quality_issues=quality["issues"],
-    )
-
-
-# ---------------------------------------------------------------------------
-# Example 6: Role Prompting + Output Structuring
-# ---------------------------------------------------------------------------
-
-@dataclass
-class CodeIssue:
-    severity: Literal["critical", "warning", "info"]
-    line: int | None
-    description: str
-    suggestion: str
-
-
-@dataclass
-class CodeReviewResult:
-    issues: list[CodeIssue]
-    overall_assessment: str
-
-
-async def review_code(
-    complete: CompletionFn, code: str, language: str
-) -> CodeReviewResult:
-    """
-    Combine role prompting with structured output for a code review assistant.
-    The role constrains the domain expertise; the structure ensures parseability.
-    """
-    messages = [
-        Message(
-            role="system",
-            content=(
-                f"You are a senior {language} engineer performing a security-focused code review.\n\n"
-                "Focus on:\n"
-                "1. Security vulnerabilities (injection, XSS, auth issues)\n"
-                "2. Bug-prone patterns (race conditions, null dereferences, off-by-one)\n"
-                "3. Performance issues (N+1 queries, memory leaks, unnecessary allocations)\n\n"
-                "Do NOT comment on:\n"
-                "- Code style or formatting\n"
-                "- Naming conventions (unless misleading)\n"
-                "- Missing comments or documentation\n\n"
-                "Return JSON:\n"
-                "{\n"
-                '  "issues": [\n'
-                '    { "severity": "critical"|"warning"|"info", "line": <int|null>,\n'
-                '      "description": "what\'s wrong", "suggestion": "how to fix it" }\n'
-                "  ],\n"
-                '  "overall_assessment": "1-2 sentence summary"\n'
-                "}\n\n"
-                "If there are no issues, return an empty issues array."
-            ),
-        ),
-        Message(role="user", content=f"```{language}\n{code}\n```"),
-    ]
-
-    raw = await complete(
-        messages,
-        LLMConfig(model="gpt-4o", temperature=0, response_format="json_object"),
-    )
-    data = json.loads(raw)
-
-    # PYTHON: List comprehension to convert list of dicts to list of dataclass objects
-    # [CodeIssue(**issue) for issue in data["issues"]]
-    # Equivalent to:
-    #   issues = []
-    #   for issue in data["issues"]:
-    #       issues.append(CodeIssue(**issue))
-    return CodeReviewResult(
-        issues=[CodeIssue(**issue) for issue in data["issues"]],
-        overall_assessment=data["overall_assessment"],
-    )
-
-
-# ---------------------------------------------------------------------------
-# Example 7: Iterative Refinement
-# ---------------------------------------------------------------------------
-
-@dataclass
-class RefinementResult:
-    final_output: str
-    iterations: int
-
-
-async def iterative_refinement(
-    complete: CompletionFn, task: str, max_iterations: int = 2
-) -> RefinementResult:
-    """
-    Use the model to critique and improve its own output.
-    This pattern is the foundation of self-consistency and constitutional AI.
-    """
-    # Step 1: Initial generation
-    current_output = await complete(
-        [Message(role="user", content=task)],
-        LLMConfig(model="gpt-4o", temperature=0.7),
-    )
-
-    for i in range(max_iterations):
-        # Step 2: Self-critique
-        critique = await complete(
-            [
-                Message(
-                    role="system",
-                    content=(
-                        "You are a critical reviewer. Evaluate this output for:\n"
-                        "- Accuracy and correctness\n"
-                        "- Completeness (anything missing?)\n"
-                        "- Clarity and conciseness\n"
-                        "- Any errors or misleading statements\n\n"
-                        'If the output is good enough, respond with exactly "APPROVED".\n'
-                        "Otherwise, list specific improvements needed."
+            # Feed the error back to the model for self-correction
+            messages.extend([
+                {"role": "assistant", "content": raw_output},
+                {
+                    "role": "user",
+                    "content": (
+                        f"Your response was not valid. Error:\n{e}\n\n"
+                        "Please fix the issue and return valid JSON "
+                        "matching the required schema."
                     ),
-                ),
-                Message(
-                    role="user",
-                    content=f"Task: {task}\n\nOutput to review:\n{current_output}",
-                ),
-            ],
-            LLMConfig(model="gpt-4o", temperature=0),
-        )
+                },
+            ])
 
-        if critique.strip() == "APPROVED":
-            return RefinementResult(final_output=current_output, iterations=i + 1)
-
-        # Step 3: Refine based on critique
-        current_output = await complete(
-            [
-                Message(
-                    role="user",
-                    content=(
-                        f"Original task: {task}\n\n"
-                        f"Your previous output:\n{current_output}\n\n"
-                        f"Feedback:\n{critique}\n\n"
-                        "Please provide an improved version addressing all feedback."
-                    ),
-                ),
-            ],
-            LLMConfig(model="gpt-4o", temperature=0.5),
-        )
-
-    return RefinementResult(final_output=current_output, iterations=max_iterations)
+    return None
 
 
 # ---------------------------------------------------------------------------
-# Example 8: Dynamic Prompt Assembly
+# Usage Examples
 # ---------------------------------------------------------------------------
 
-@dataclass
-class PromptContext:
-    user_role: Literal["admin", "user", "guest"]
-    features: list[str]
-    previous_errors: list[str] | None = None
-    output_format: Literal["json", "markdown", "text"] = "text"
+async def main():
+    """Demonstrate each pattern."""
 
-
-def build_dynamic_prompt(
-    base_instruction: str, context: PromptContext
-) -> list[Message]:
-    """
-    In production, prompts are rarely static strings. This shows a pattern for
-    building prompts dynamically based on context — a common real-world need.
-    """
-    system_parts: list[str] = []
-
-    # Base instruction
-    system_parts.append(base_instruction)
-
-    # Role-based constraints
-    role_constraints = {
-        "admin": "The user has full access. You may discuss system internals.",
-        "user": "The user has standard access. Do not expose system internals or admin features.",
-        "guest": "The user has limited access. Only discuss publicly available features.",
-    }
-    system_parts.append(role_constraints[context.user_role])
-
-    # Feature-specific instructions
-    if context.features:
-        features_str = ", ".join(context.features)
-        system_parts.append(
-            f"Available features: {features_str}. Only reference these features."
-        )
-
-    # Learn from previous errors
-    if context.previous_errors:
-        error_list = "\n".join(f"- {e}" for e in context.previous_errors)
-        system_parts.append(
-            f"IMPORTANT: Previous responses had these issues. Avoid repeating them:\n{error_list}"
-        )
-
-    # Output format
-    format_instructions = {
-        "json": "Respond with valid JSON only. No markdown, no explanation.",
-        "markdown": "Respond in well-formatted markdown.",
-        "text": "Respond in plain text.",
-    }
-    system_parts.append(format_instructions[context.output_format])
-
-    return [Message(role="system", content="\n\n".join(system_parts))]
-
-
-# ---------------------------------------------------------------------------
-# Usage Examples (illustrative, not runnable without a provider)
-# ---------------------------------------------------------------------------
-
-async def demo(complete: CompletionFn) -> None:
-    # Zero-shot
-    category = await zero_shot_classify(
-        complete, "My payment failed but the order still went through"
+    # 1. Classification
+    print("=== Classification ===")
+    result = await classify_ticket(
+        "The checkout page shows a 500 error when I try to pay with PayPal"
     )
-    print("Category:", category)  # "billing"
+    print(f"Category: {result.category}")
+    print(f"Confidence: {result.confidence}")
+    print(f"Reasoning: {result.reasoning}")
+    print()
 
-    # Chain-of-thought
-    answer = await chain_of_thought(
-        complete,
-        "If a train travels 120km in 1.5 hours, and then 80km in 1 hour, "
-        "what's the average speed for the whole trip?",
-    )
-    print("Answer:", answer)
-    # ReasonedAnswer(reasoning="Total distance = 200km, ...", answer="80 km/h", confidence="high")
-
-    # Entity extraction
+    # 2. Entity Extraction
+    print("=== Entity Extraction ===")
     entities = await extract_entities(
-        complete,
-        "Tim Cook announced at Apple's Cupertino headquarters on March 15, 2024 "
-        "that the company would invest $2B in AI research.",
+        "Sarah Chen, CTO of Acme Corp, announced a $50M Series C "
+        "on March 15, 2024 at their San Francisco headquarters."
     )
-    print("Entities:", entities)
+    print(f"People: {entities.people}")
+    print(f"Organizations: {entities.organizations}")
+    print(f"Dates: {entities.dates}")
+    print(f"Values: {entities.monetary_values}")
+    print()
 
-    # Code review
-    review = await review_code(
-        complete,
-        'app.get("/user/:id", (req, res) => {\n'
-        '  const query = "SELECT * FROM users WHERE id = " + req.params.id;\n'
-        "  db.query(query).then(user => res.json(user));\n"
-        "});",
-        "typescript",
+    # 3. Multi-step chain
+    print("=== Code Analysis Chain ===")
+    chain_result = await analyze_and_improve_code(
+        "def get_user(id):\n"
+        "    query = f'SELECT * FROM users WHERE id = {id}'\n"
+        "    return db.execute(query)\n"
     )
-    print("Review:", review)
-    # issues: [CodeIssue(severity="critical", description="SQL injection via string concatenation", ...)]
+    print(f"Analysis:\n{chain_result.analysis[:200]}...")
+    print(f"\nPlan:\n{chain_result.plan[:200]}...")
+    print(f"\nImproved code:\n{chain_result.execution[:200]}...")
+    print()
+
+    # 4. Summarization
+    print("=== Summarization ===")
+    summary = await summarize(
+        "Artificial intelligence has transformed the software industry...",
+        detail_level="brief",
+        audience="executive leadership",
+    )
+    print(f"Summary: {summary}")
+    print()
+
+    # 5. Template system
+    print("=== Template System ===")
+    result = await TEMPLATES["classify"].execute(
+        categories="positive, negative, neutral",
+        input="This product exceeded my expectations. Best purchase this year!",
+    )
+    print(f"Classification: {result}")
+    print()
+
+    # 6. Self-consistency
+    print("=== Self-Consistency ===")
+    sc_result = await self_consistency(
+        "A store has 15 apples. They sell 6 in the morning, receive a "
+        "shipment of 20 in the afternoon, then sell 8 more. How many "
+        "apples do they have at the end of the day?",
+        n_samples=5,
+    )
+    print(f"Answer: {sc_result['answer']}")
+    print(f"Confidence: {sc_result['confidence']:.0%}")
+    print(f"Vote distribution: {sc_result['distribution']}")
+    print()
+
+    # 7. Retry with feedback
+    print("=== Retry with Feedback ===")
+
+    class ProductReview(BaseModel):
+        product_name: str
+        sentiment: str
+        key_features: list[str]
+        rating_out_of_5: float
+
+    review_result = await extract_with_retry(
+        "I love the new AirPods Pro 2! The noise cancellation is incredible "
+        "and the battery lasts all day. Sound quality is top-notch. 4.5/5.",
+        schema=ProductReview,
+    )
+    if review_result:
+        print(f"Extracted: {review_result.model_dump_json(indent=2)}")
+    print()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

@@ -1,555 +1,696 @@
 """
-Agents & Tool Use Examples
+Module 04: Agents & Tool Use — Complete, Runnable Patterns
 
-Python patterns for tool definitions, an agent loop,
-and multi-step execution. Provider-agnostic interfaces.
+These examples demonstrate core agent patterns using protocol-based
+abstractions. Replace the LLM call with your provider of choice.
+
+All examples are self-contained and focus on the agent/tool concepts,
+not Python specifics.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import dataclass, field
-from typing import Any, Protocol, Literal, Callable, Awaitable
+from typing import Any, Protocol
 
 
 # ---------------------------------------------------------------------------
-# Core Types
+# Shared types used across all examples
 # ---------------------------------------------------------------------------
-
-@dataclass
-class Message:
-    role: Literal["system", "user", "assistant", "tool"]
-    content: str
-    tool_call_id: str | None = None
-
-
-@dataclass
-class ParameterSchema:
-    type: str
-    description: str
-    enum: list[str] | None = None
-
-
-@dataclass
-class ToolDefinition:
-    name: str
-    description: str
-    parameters: dict[str, Any]  # JSON Schema object
-
 
 @dataclass
 class ToolCall:
+    """Represents a tool call requested by the model."""
     id: str
     name: str
     arguments: dict[str, Any]
 
 
 @dataclass
-class ModelResponse:
-    """The model's response — either text, tool calls, or both."""
-    text: str | None = None
+class Message:
+    """A single message in the conversation."""
+    role: str  # "system", "user", "assistant", "tool"
+    content: str
     tool_calls: list[ToolCall] | None = None
+    tool_call_id: str | None = None  # For tool result messages
 
 
-class ToolCompletionFn(Protocol):
-    """Generic completion function that supports tool use."""
-    async def __call__(
+class LLMClient(Protocol):
+    """Protocol for any LLM provider. Implement this for OpenAI, Anthropic, etc."""
+    async def chat(
         self,
         messages: list[Message],
-        tools: list[ToolDefinition],
-        config: dict[str, Any],
-    ) -> ModelResponse: ...
-
-
-# A function that executes a tool and returns a result.
-ToolExecutor = Callable[[str, dict[str, Any]], Awaitable[Any]]
+        tools: list[dict] | None = None,
+    ) -> Message: ...
 
 
 # ---------------------------------------------------------------------------
-# Example Tool Definitions
+# Example 1: Complete Agent Loop with Tool Execution
 # ---------------------------------------------------------------------------
 
-customer_support_tools: list[ToolDefinition] = [
-    ToolDefinition(
-        name="lookup_customer",
-        description=(
-            "Look up a customer by email or ID. Returns customer profile including "
-            "name, plan, and account status. Use this when you need to identify who "
-            "you're talking to."
-        ),
-        parameters={
-            "type": "object",
-            "properties": {
-                "email": {"type": "string", "description": "Customer's email address"},
-                "customer_id": {"type": "string", "description": "Customer ID (format: CUST-XXXXX)"},
-            },
-            "required": [],
-        },
-    ),
-    ToolDefinition(
-        name="search_orders",
-        description=(
-            "Search for a customer's orders. Returns a list of orders with status, "
-            "items, and dates. Requires a customer ID — look up the customer first "
-            "if you only have their email."
-        ),
-        parameters={
-            "type": "object",
-            "properties": {
-                "customer_id": {"type": "string", "description": "Customer ID"},
-                "status": {
-                    "type": "string",
-                    "description": "Filter by order status",
-                    "enum": ["pending", "shipped", "delivered", "cancelled", "returned"],
+# Tool registry: maps tool names to Python functions
+TOOL_REGISTRY: dict[str, Any] = {}
+
+
+def register_tool(func):
+    """Decorator to register a function as an available tool."""
+    TOOL_REGISTRY[func.__name__] = func
+    return func
+
+
+@register_tool
+async def get_weather(city: str, units: str = "celsius") -> dict:
+    """Get current weather for a city. In production, this calls a weather API."""
+    # Simulated response
+    weather_data = {
+        "Tokyo": {"temp": 22, "condition": "sunny", "humidity": 45},
+        "London": {"temp": 14, "condition": "cloudy", "humidity": 78},
+        "New York": {"temp": 28, "condition": "partly cloudy", "humidity": 62},
+    }
+    result = weather_data.get(city, {"temp": 20, "condition": "unknown", "humidity": 50})
+    result["city"] = city
+    result["units"] = units
+    return result
+
+
+@register_tool
+async def search_orders(order_id: str | None = None, email: str | None = None) -> dict:
+    """Search for customer orders by ID or email."""
+    if order_id:
+        return {"order_id": order_id, "status": "shipped", "items": ["Widget A", "Gadget B"]}
+    if email:
+        return {"orders": [{"order_id": "ORD-001", "status": "delivered"}]}
+    return {"error": "Provide either order_id or email"}
+
+
+async def execute_tool(tool_call: ToolCall) -> str:
+    """Execute a tool call and return the result as a string."""
+    func = TOOL_REGISTRY.get(tool_call.name)
+    if not func:
+        return json.dumps({"error": f"Unknown tool: {tool_call.name}"})
+
+    try:
+        result = await func(**tool_call.arguments)
+        return json.dumps(result)
+    except TypeError as e:
+        # Model passed wrong arguments
+        return json.dumps({"error": f"Invalid arguments: {e}"})
+    except Exception as e:
+        return json.dumps({"error": f"Tool execution failed: {e}"})
+
+
+async def agent_loop(
+    client: LLMClient,
+    user_message: str,
+    tools: list[dict],
+    system_prompt: str = "You are a helpful assistant.",
+    max_iterations: int = 10,
+) -> str:
+    """
+    Core agent loop. Sends messages to the LLM, executes tool calls,
+    and loops until the model responds with text or max iterations hit.
+    """
+    messages = [
+        Message(role="system", content=system_prompt),
+        Message(role="user", content=user_message),
+    ]
+
+    for iteration in range(max_iterations):
+        # Step 1: Call the LLM
+        response = await client.chat(messages, tools=tools)
+
+        # Step 2: Check if model wants to use tools
+        if not response.tool_calls:
+            # Model responded with text -- task is complete
+            return response.content
+
+        # Step 3: Append assistant message (with tool calls) to history
+        messages.append(response)
+
+        # Step 4: Execute each tool call and append results
+        for tool_call in response.tool_calls:
+            result = await execute_tool(tool_call)
+            messages.append(Message(
+                role="tool",
+                content=result,
+                tool_call_id=tool_call.id,
+            ))
+
+        # Loop continues: LLM will see tool results and decide next step
+
+    return "I was unable to complete the task within the iteration limit."
+
+
+# ---------------------------------------------------------------------------
+# Example 2: Tool Definitions with JSON Schema
+# ---------------------------------------------------------------------------
+
+CUSTOMER_SERVICE_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_knowledge_base",
+            "description": (
+                "Search the company knowledge base for product information, "
+                "policies, and troubleshooting guides. Use when the customer "
+                "asks a question about our products or company policies. "
+                "Returns relevant articles with titles and snippets."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query. Be specific and include keywords."
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "Narrow results to a specific category",
+                        "enum": ["products", "policies", "troubleshooting", "faq"]
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Maximum results to return (default 5)",
+                        "minimum": 1,
+                        "maximum": 20
+                    }
                 },
-                "limit": {"type": "integer", "description": "Max results to return (default: 5)"},
-            },
-            "required": ["customer_id"],
-        },
-    ),
-    ToolDefinition(
-        name="get_order_details",
-        description=(
-            "Get detailed information about a specific order including items, "
-            "shipping, and payment. Use when the customer asks about a specific order."
-        ),
-        parameters={
-            "type": "object",
-            "properties": {
-                "order_id": {"type": "string", "description": "Order ID (format: ORD-XXXXX)"},
-            },
-            "required": ["order_id"],
-        },
-    ),
-    ToolDefinition(
-        name="initiate_refund",
-        description=(
-            "Initiate a refund for an order. This is a WRITE operation — only use when "
-            "the customer explicitly requests a refund and you've confirmed the order "
-            "details. Returns a refund confirmation."
-        ),
-        parameters={
-            "type": "object",
-            "properties": {
-                "order_id": {"type": "string", "description": "Order ID to refund"},
-                "reason": {
-                    "type": "string",
-                    "description": "Reason for the refund",
-                    "enum": ["defective", "wrong_item", "not_as_described", "changed_mind", "other"],
+                "required": ["query"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_order_status",
+            "description": (
+                "Look up the status of a customer order by order ID. "
+                "Returns current status, tracking info, and estimated delivery. "
+                "Use when the customer asks about an existing order."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "order_id": {
+                        "type": "string",
+                        "description": "Order ID in format ORD-XXXXX"
+                    }
                 },
-                "amount": {
-                    "type": "integer",
-                    "description": "Refund amount in cents. Omit for full refund.",
+                "required": ["order_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_support_ticket",
+            "description": (
+                "Create a support ticket for issues that cannot be resolved "
+                "in conversation. Use as a last resort after attempting to "
+                "help the customer directly."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "Brief title describing the issue"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Detailed description including what was tried"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": ["low", "medium", "high", "urgent"],
+                        "description": "Issue severity level"
+                    },
+                    "customer_email": {
+                        "type": "string",
+                        "description": "Customer's email for follow-up"
+                    }
                 },
-            },
-            "required": ["order_id", "reason"],
-        },
-    ),
-    ToolDefinition(
-        name="search_knowledge_base",
-        description=(
-            "Search the help center knowledge base for articles about policies, "
-            "features, and common questions. Use this to find accurate information "
-            "before answering policy questions."
-        ),
-        parameters={
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "Search query — be specific"},
-            },
-            "required": ["query"],
-        },
-    ),
+                "required": ["title", "description", "priority"]
+            }
+        }
+    },
 ]
 
 
 # ---------------------------------------------------------------------------
-# Tool Executor Factory
+# Example 3: Multi-Tool Orchestration
 # ---------------------------------------------------------------------------
 
-def create_tool_executor(
-    handlers: dict[str, Callable[[dict[str, Any]], Awaitable[Any]]],
-) -> ToolExecutor:
+async def multi_tool_agent(
+    client: LLMClient,
+    user_message: str,
+) -> str:
     """
-    In production, this dispatches to real APIs/databases.
-    Here we show the dispatch pattern with mock data.
+    Agent that selects from multiple tools based on the user's request.
+    The system prompt guides tool selection strategy.
     """
-    async def executor(name: str, args: dict[str, Any]) -> Any:
-        handler = handlers.get(name)
-        if handler is None:
-            return {"error": f"Unknown tool: {name}"}
-        try:
-            return await handler(args)
-        except Exception as e:
-            # Structured errors help the model recover
-            return {
-                "error": str(e),
-                "suggestion": "Try a different approach or ask the user for more details.",
-            }
+    system_prompt = """You are a customer service agent for TechCorp.
 
-    return executor
+Available actions:
+1. Search the knowledge base for product info and policies
+2. Look up order status by order ID
+3. Create support tickets for unresolved issues
 
+Strategy:
+- Always try to answer from the knowledge base first
+- Only create a ticket if you cannot resolve the issue
+- Be specific in your search queries for better results
+- If the customer mentions an order, look it up before answering"""
 
-# Mock handlers
-async def _lookup_customer(args: dict[str, Any]) -> dict:
-    return {
-        "customer_id": "CUST-12345",
-        "name": "Jane Smith",
-        "email": args.get("email", "jane@example.com"),
-        "plan": "pro",
-        "status": "active",
-        "since": "2023-06-15",
-    }
-
-
-async def _search_orders(args: dict[str, Any]) -> dict:
-    return {
-        "orders": [
-            {"order_id": "ORD-98765", "date": "2024-03-01", "status": "delivered", "total": 4999, "items": ["Widget Pro"]},
-            {"order_id": "ORD-98770", "date": "2024-03-10", "status": "shipped", "total": 2999, "items": ["Widget Mini"]},
-        ]
-    }
-
-
-async def _get_order_details(args: dict[str, Any]) -> dict:
-    return {
-        "order_id": args.get("order_id"),
-        "status": "delivered",
-        "items": [{"name": "Widget Pro", "quantity": 1, "price": 4999}],
-        "shipping": {"carrier": "UPS", "delivered": "2024-03-05"},
-        "payment": {"method": "visa_4242", "total": 4999},
-    }
-
-
-async def _initiate_refund(args: dict[str, Any]) -> dict:
-    return {
-        "refund_id": "REF-55555",
-        "order_id": args.get("order_id"),
-        "amount": args.get("amount", 4999),
-        "status": "processing",
-        "estimated_completion": "3-5 business days",
-    }
-
-
-async def _search_knowledge_base(args: dict[str, Any]) -> dict:
-    return {
-        "results": [
-            {
-                "title": "Refund Policy",
-                "excerpt": "Full refunds available within 30 days of delivery. Partial refunds after 30 days at our discretion.",
-                "url": "/help/refund-policy",
-            }
-        ]
-    }
-
-
-tool_executor = create_tool_executor({
-    "lookup_customer": _lookup_customer,
-    "search_orders": _search_orders,
-    "get_order_details": _get_order_details,
-    "initiate_refund": _initiate_refund,
-    "search_knowledge_base": _search_knowledge_base,
-})
+    return await agent_loop(
+        client=client,
+        user_message=user_message,
+        tools=CUSTOMER_SERVICE_TOOLS,
+        system_prompt=system_prompt,
+        max_iterations=8,
+    )
 
 
 # ---------------------------------------------------------------------------
-# The Agent Loop
+# Example 4: Conversation Memory with Summarization
 # ---------------------------------------------------------------------------
 
 @dataclass
-class AgentStep:
-    iteration: int
-    tool_call: ToolCall | None = None
-    tool_result: Any = None
-    response: str | None = None
+class ConversationMemory:
+    """Manages conversation history with automatic summarization."""
+    messages: list[Message] = field(default_factory=list)
+    summary: str = ""
+    window_size: int = 20  # Keep last N messages in full
+    summarize_threshold: int = 30  # Trigger summarization at this count
 
+    def add(self, message: Message) -> None:
+        self.messages.append(message)
 
-@dataclass
-class AgentOptions:
-    max_iterations: int
-    model: str
-    on_before_tool_call: Callable[[ToolCall], Awaitable[bool]] | None = None
-    on_step: Callable[[AgentStep], None] | None = None
+    def get_messages(self) -> list[Message]:
+        """Return messages for the LLM, including summary of older messages."""
+        system_msgs = [m for m in self.messages if m.role == "system"]
+        non_system = [m for m in self.messages if m.role != "system"]
 
+        result = list(system_msgs)
 
-@dataclass
-class AgentResult:
-    response: str
-    steps: list[AgentStep]
-
-
-async def run_agent(
-    initial_messages: list[Message],
-    tools: list[ToolDefinition],
-    execute: ToolExecutor,
-    complete: ToolCompletionFn,
-    options: AgentOptions,
-) -> AgentResult:
-    """
-    Core agent loop: send messages to the model, execute any requested tools,
-    repeat until the model returns a text response or we hit max iterations.
-    """
-    messages = list(initial_messages)
-    steps: list[AgentStep] = []
-
-    for i in range(options.max_iterations):
-        # 1. Call the model
-        result = await complete(messages, tools, {"model": options.model, "temperature": 0})
-
-        # 2. If the model returns text (no tool calls), we're done
-        if not result.tool_calls:
-            response = result.text or "I wasn't able to complete the task."
-            step = AgentStep(iteration=i, response=response)
-            steps.append(step)
-            if options.on_step:
-                options.on_step(step)
-            return AgentResult(response=response, steps=steps)
-
-        # 3. Execute each tool call
-        for tool_call in result.tool_calls:
-            # Optional: check permissions before executing
-            if options.on_before_tool_call:
-                allowed = await options.on_before_tool_call(tool_call)
-                if not allowed:
-                    messages.append(Message(
-                        role="tool",
-                        content=json.dumps({"error": "Action blocked by policy. Please try a different approach."}),
-                        tool_call_id=tool_call.id,
-                    ))
-                    continue
-
-            # Execute the tool
-            tool_result = await execute(tool_call.name, tool_call.arguments)
-
-            # Record the step
-            step = AgentStep(iteration=i, tool_call=tool_call, tool_result=tool_result)
-            steps.append(step)
-            if options.on_step:
-                options.on_step(step)
-
-            # Add the assistant's tool call and the result to the conversation
-            messages.append(Message(
-                role="assistant",
-                content=json.dumps({"tool_calls": [{"id": tool_call.id, "name": tool_call.name, "arguments": tool_call.arguments}]}),
+        # Prepend summary of older messages if available
+        if self.summary:
+            result.append(Message(
+                role="system",
+                content=f"Summary of earlier conversation:\n{self.summary}"
             ))
+
+        # Include recent messages in full
+        result.extend(non_system[-self.window_size:])
+        return result
+
+    def needs_summarization(self) -> bool:
+        non_system = [m for m in self.messages if m.role != "system"]
+        return len(non_system) > self.summarize_threshold
+
+    async def summarize(self, client: LLMClient) -> None:
+        """Compress older messages into a summary."""
+        if not self.needs_summarization():
+            return
+
+        non_system = [m for m in self.messages if m.role != "system"]
+        old_messages = non_system[:-self.window_size]
+
+        # Ask the LLM to summarize
+        summary_messages = [
+            Message(role="system", content=(
+                "Summarize the following conversation concisely. "
+                "Preserve key facts: user preferences, decisions made, "
+                "issues discussed, and any commitments."
+            )),
+            *old_messages,
+        ]
+
+        response = await client.chat(summary_messages)
+        self.summary = response.content
+
+        # Remove old messages, keep system + recent
+        system_msgs = [m for m in self.messages if m.role == "system"]
+        recent = non_system[-self.window_size:]
+        self.messages = system_msgs + recent
+
+
+async def agent_with_memory(
+    client: LLMClient,
+    memory: ConversationMemory,
+    user_message: str,
+    tools: list[dict],
+) -> str:
+    """Agent loop that uses conversation memory with summarization."""
+    memory.add(Message(role="user", content=user_message))
+
+    # Summarize if history is getting long
+    if memory.needs_summarization():
+        await memory.summarize(client)
+
+    messages = memory.get_messages()
+
+    for _ in range(10):
+        response = await client.chat(messages, tools=tools)
+
+        if not response.tool_calls:
+            memory.add(response)
+            return response.content
+
+        messages.append(response)
+        memory.add(response)
+
+        for tc in response.tool_calls:
+            result = await execute_tool(tc)
+            tool_msg = Message(role="tool", content=result, tool_call_id=tc.id)
+            messages.append(tool_msg)
+            memory.add(tool_msg)
+
+    return "Max iterations reached."
+
+
+# ---------------------------------------------------------------------------
+# Example 5: ReAct Pattern Implementation
+# ---------------------------------------------------------------------------
+
+REACT_SYSTEM_PROMPT = """You are an agent that solves problems step by step.
+
+For each step, use this format:
+
+Thought: [Your reasoning about what to do next]
+Action: [Call a tool if needed]
+Observation: [You'll see the tool result here]
+
+When you have enough information to answer, respond with:
+
+Thought: [Final reasoning]
+Answer: [Your final answer to the user]
+
+Always think before acting. Explain WHY you're taking each action."""
+
+
+async def react_agent(
+    client: LLMClient,
+    user_message: str,
+    tools: list[dict],
+    max_steps: int = 8,
+) -> str:
+    """
+    ReAct agent that explicitly reasons before each tool call.
+
+    The model is prompted to output Thought/Action/Observation traces.
+    With native tool use APIs, the "Action" is a tool call and the
+    "Observation" is the tool result. The "Thought" appears in the
+    model's text output before the tool call.
+    """
+    messages = [
+        Message(role="system", content=REACT_SYSTEM_PROMPT),
+        Message(role="user", content=user_message),
+    ]
+
+    trace: list[dict] = []  # For debugging: log each step
+
+    for step in range(max_steps):
+        response = await client.chat(messages, tools=tools)
+
+        # Log the reasoning (text portion of the response)
+        if response.content:
+            trace.append({"step": step, "thought": response.content})
+
+        if not response.tool_calls:
+            # Model's final answer (no more tools needed)
+            trace.append({"step": step, "answer": response.content})
+            return response.content
+
+        messages.append(response)
+
+        for tc in response.tool_calls:
+            trace.append({
+                "step": step,
+                "action": tc.name,
+                "arguments": tc.arguments,
+            })
+
+            result = await execute_tool(tc)
+            trace.append({"step": step, "observation": result})
+
             messages.append(Message(
                 role="tool",
-                content=json.dumps(tool_result),
-                tool_call_id=tool_call.id,
+                content=result,
+                tool_call_id=tc.id,
             ))
 
-    # Hit max iterations — ask the model for a final response without tools
-    messages.append(Message(
-        role="system",
-        content="You've reached the maximum number of tool calls. Please provide your best response with the information gathered so far.",
-    ))
-    final_result = await complete(messages, [], {"model": options.model})
-
-    response = final_result.text or "I wasn't able to fully complete the task with the available steps."
-    steps.append(AgentStep(iteration=options.max_iterations, response=response))
-
-    return AgentResult(response=response, steps=steps)
+    # Provide trace for debugging if max steps hit
+    return f"Max steps reached. Trace:\n{json.dumps(trace, indent=2)}"
 
 
 # ---------------------------------------------------------------------------
-# ReAct Pattern Implementation
-# ---------------------------------------------------------------------------
-
-async def run_react_agent(
-    user_query: str,
-    tools: list[ToolDefinition],
-    execute: ToolExecutor,
-    complete: ToolCompletionFn,
-    max_iterations: int = 10,
-    model: str = "gpt-4o",
-) -> AgentResult:
-    """
-    ReAct wraps the agent loop with explicit reasoning.
-    The system prompt instructs the model to think before acting.
-    """
-    system_prompt = (
-        "You are a helpful customer support agent. You have access to tools to "
-        "look up customer information, orders, and company policies.\n\n"
-        "When answering a question:\n"
-        "1. THINK about what information you need\n"
-        "2. Use the appropriate tool(s) to gather that information\n"
-        "3. THINK about whether you have enough information to answer\n"
-        "4. Either use more tools or provide your final answer\n\n"
-        "Always verify information with tools before making claims. "
-        "If you're unsure about a policy, search the knowledge base.\n\n"
-        "Be concise and helpful. If you can't resolve the issue, explain what "
-        "you've found and suggest next steps."
-    )
-
-    return await run_agent(
-        initial_messages=[
-            Message(role="system", content=system_prompt),
-            Message(role="user", content=user_query),
-        ],
-        tools=tools,
-        execute=execute,
-        complete=complete,
-        options=AgentOptions(max_iterations=max_iterations, model=model),
-    )
-
-
-# ---------------------------------------------------------------------------
-# Tool Validation
+# Example 6: Tool Call Validation and Error Handling
 # ---------------------------------------------------------------------------
 
 @dataclass
 class ValidationResult:
     valid: bool
-    errors: list[str]
+    errors: list[str] = field(default_factory=list)
 
 
 def validate_tool_call(
-    call: ToolCall, tools: list[ToolDefinition]
+    tool_call: ToolCall,
+    tool_schemas: list[dict],
 ) -> ValidationResult:
-    """
-    Validate a tool call against its schema before execution.
-    Catches malformed requests before they hit your backend.
-    """
-    tool = next((t for t in tools if t.name == call.name), None)
-    errors: list[str] = []
+    """Validate a tool call against its JSON schema before execution."""
+    # Find the matching schema
+    schema = None
+    for tool in tool_schemas:
+        func_def = tool.get("function", tool)
+        if func_def.get("name") == tool_call.name:
+            schema = func_def
+            break
 
-    if tool is None:
-        return ValidationResult(valid=False, errors=[f"Unknown tool: {call.name}"])
+    if not schema:
+        return ValidationResult(
+            valid=False,
+            errors=[f"Unknown tool: {tool_call.name}. Available: {[t.get('function', t)['name'] for t in tool_schemas]}"]
+        )
+
+    params = schema.get("parameters", schema.get("input_schema", {}))
+    errors = []
 
     # Check required parameters
-    for param in tool.parameters.get("required", []):
-        if param not in call.arguments:
-            errors.append(f"Missing required parameter: {param}")
-
-    # Check for unexpected parameters
-    known_params = set(tool.parameters.get("properties", {}).keys())
-    for param in call.arguments:
-        if param not in known_params:
-            errors.append(f"Unexpected parameter: {param}")
+    for required in params.get("required", []):
+        if required not in tool_call.arguments:
+            errors.append(f"Missing required parameter: '{required}'")
 
     # Check enum values
-    properties = tool.parameters.get("properties", {})
-    for key, value in call.arguments.items():
-        schema = properties.get(key, {})
-        if "enum" in schema and isinstance(value, str) and value not in schema["enum"]:
+    properties = params.get("properties", {})
+    for key, value in tool_call.arguments.items():
+        if key not in properties:
+            errors.append(f"Unknown parameter: '{key}'")
+            continue
+
+        prop_schema = properties[key]
+
+        # Type checking
+        expected_type = prop_schema.get("type")
+        if expected_type == "string" and not isinstance(value, str):
+            errors.append(f"Parameter '{key}' must be a string, got {type(value).__name__}")
+        elif expected_type == "integer" and not isinstance(value, int):
+            errors.append(f"Parameter '{key}' must be an integer, got {type(value).__name__}")
+
+        # Enum validation
+        if "enum" in prop_schema and value not in prop_schema["enum"]:
             errors.append(
-                f'Invalid value for {key}: "{value}". '
-                f'Expected one of: {", ".join(schema["enum"])}'
+                f"Parameter '{key}' must be one of {prop_schema['enum']}, got '{value}'"
             )
+
+        # Range validation
+        if "minimum" in prop_schema and isinstance(value, (int, float)):
+            if value < prop_schema["minimum"]:
+                errors.append(f"Parameter '{key}' must be >= {prop_schema['minimum']}")
+        if "maximum" in prop_schema and isinstance(value, (int, float)):
+            if value > prop_schema["maximum"]:
+                errors.append(f"Parameter '{key}' must be <= {prop_schema['maximum']}")
 
     return ValidationResult(valid=len(errors) == 0, errors=errors)
 
 
-# ---------------------------------------------------------------------------
-# Permission-Gated Tool Execution
-# ---------------------------------------------------------------------------
-
-PermissionLevel = Literal["read", "write", "admin"]
-
-TOOL_PERMISSIONS: dict[str, PermissionLevel] = {
-    "lookup_customer": "read",
-    "search_orders": "read",
-    "get_order_details": "read",
-    "search_knowledge_base": "read",
-    "initiate_refund": "write",
-}
-
-CONFIRM_REQUIRED = {"initiate_refund"}
-
-_PERMISSION_ORDER: list[PermissionLevel] = ["read", "write", "admin"]
-
-
-def create_gated_executor(
-    inner_executor: ToolExecutor,
-    user_permission: PermissionLevel,
-    confirm_fn: Callable[[ToolCall], Awaitable[bool]] | None = None,
-) -> ToolExecutor:
+async def safe_execute_tool(
+    tool_call: ToolCall,
+    tool_schemas: list[dict],
+    requires_approval: set[str] | None = None,
+) -> str:
     """
-    Create a permission-gated tool executor that checks authorization
-    and optionally requires human confirmation for sensitive actions.
+    Execute a tool call with validation, permission checks, and error handling.
+    Returns a JSON string suitable for passing back to the LLM.
     """
-    async def gated(name: str, args: dict[str, Any]) -> Any:
-        required = TOOL_PERMISSIONS.get(name, "admin")
-        if _PERMISSION_ORDER.index(user_permission) < _PERMISSION_ORDER.index(required):
-            return {
-                "error": f"Insufficient permissions for {name}. Required: {required}, have: {user_permission}"
-            }
+    requires_approval = requires_approval or {"create_support_ticket", "issue_refund"}
 
-        if name in CONFIRM_REQUIRED and confirm_fn:
-            confirmed = await confirm_fn(ToolCall(id="pending", name=name, arguments=args))
-            if not confirmed:
-                return {"error": "Action cancelled by user."}
+    # Step 1: Validate arguments against schema
+    validation = validate_tool_call(tool_call, tool_schemas)
+    if not validation.valid:
+        return json.dumps({
+            "error": "Validation failed",
+            "details": validation.errors,
+            "suggestion": "Fix the arguments and try again."
+        })
 
-        return await inner_executor(name, args)
+    # Step 2: Check if human approval is required
+    if tool_call.name in requires_approval:
+        # In production, this would present a UI prompt or send a notification
+        print(f"[APPROVAL REQUIRED] {tool_call.name}({tool_call.arguments})")
+        # For this example, auto-approve
+        approved = True
+        if not approved:
+            return json.dumps({
+                "error": "Action not approved by user",
+                "suggestion": "Inform the user that the action requires approval."
+            })
 
-    return gated
+    # Step 3: Execute with error handling
+    try:
+        result = await execute_tool(tool_call)
+        return result
+    except Exception as e:
+        return json.dumps({
+            "error": f"Execution failed: {str(e)}",
+            "suggestion": "Try a different approach or inform the user of the issue."
+        })
 
 
 # ---------------------------------------------------------------------------
-# Multi-Agent Routing (Simplified)
+# Example 7: Simple Multi-Agent Pattern (Orchestrator + Specialists)
 # ---------------------------------------------------------------------------
 
 @dataclass
 class AgentConfig:
+    """Configuration for a specialist agent."""
     name: str
     system_prompt: str
-    tools: list[ToolDefinition]
+    tools: list[dict]
+    max_iterations: int = 5
 
 
-async def route_to_agent(
-    user_message: str,
-    agents: list[AgentConfig],
-    complete: ToolCompletionFn,
-) -> str:
+class OrchestratorAgent:
     """
-    Route a user message to the appropriate specialized agent.
-    The router uses a cheap, fast model to classify intent.
+    Routes user requests to specialist agents based on intent.
+    The orchestrator itself is an LLM that classifies the request
+    and selects the appropriate specialist.
     """
-    agent_descriptions = "\n".join(
-        f"- {a.name}: {a.system_prompt[:100]}..." for a in agents
-    )
 
-    result = await complete(
-        [
-            Message(
-                role="system",
-                content=(
-                    "You are a router. Based on the user's message, decide which "
-                    "agent should handle it.\n\n"
-                    f"Available agents:\n{agent_descriptions}\n\n"
-                    "Respond with ONLY the agent name, nothing else."
-                ),
-            ),
+    def __init__(
+        self,
+        client: LLMClient,
+        specialists: dict[str, AgentConfig],
+    ):
+        self.client = client
+        self.specialists = specialists
+
+    async def route(self, user_message: str) -> str:
+        """Classify intent and route to the right specialist."""
+        # Step 1: Use the LLM to classify the request
+        routing_prompt = self._build_routing_prompt()
+        messages = [
+            Message(role="system", content=routing_prompt),
             Message(role="user", content=user_message),
-        ],
-        [],  # No tools — just text classification
-        {"model": "gpt-4o-mini", "temperature": 0},
-    )
+        ]
 
-    return (result.text or agents[0].name).strip()
+        # Force structured output: the orchestrator returns which specialist to use
+        routing_tools = [{
+            "type": "function",
+            "function": {
+                "name": "route_to_specialist",
+                "description": "Route the user's request to the appropriate specialist agent",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "specialist": {
+                            "type": "string",
+                            "enum": list(self.specialists.keys()),
+                            "description": "Which specialist should handle this request"
+                        },
+                        "reason": {
+                            "type": "string",
+                            "description": "Brief reason for the routing decision"
+                        }
+                    },
+                    "required": ["specialist", "reason"]
+                }
+            }
+        }]
+
+        response = await self.client.chat(messages, tools=routing_tools)
+
+        if not response.tool_calls:
+            # Model responded with text (simple question, no routing needed)
+            return response.content
+
+        routing = response.tool_calls[0].arguments
+        specialist_name = routing["specialist"]
+
+        # Step 2: Delegate to the specialist
+        specialist = self.specialists[specialist_name]
+        return await agent_loop(
+            client=self.client,
+            user_message=user_message,
+            tools=specialist.tools,
+            system_prompt=specialist.system_prompt,
+            max_iterations=specialist.max_iterations,
+        )
+
+    def _build_routing_prompt(self) -> str:
+        specialist_descriptions = "\n".join(
+            f"- {name}: {config.system_prompt[:100]}..."
+            for name, config in self.specialists.items()
+        )
+        return f"""You are a routing agent. Analyze the user's request and route it
+to the most appropriate specialist.
+
+Available specialists:
+{specialist_descriptions}
+
+Use the route_to_specialist tool to select the best specialist."""
 
 
-# ---------------------------------------------------------------------------
-# Usage Example
-# ---------------------------------------------------------------------------
+# Example usage of the orchestrator
 
-async def demo(complete: ToolCompletionFn) -> None:
-    result = await run_react_agent(
-        "Hi, I'm jane@example.com. I received my Widget Pro order but it's defective. "
-        "Can I get a refund?",
-        customer_support_tools,
-        tool_executor,
-        complete,
-    )
+ORDER_TOOLS = [CUSTOMER_SERVICE_TOOLS[1]]  # get_order_status only
+KB_TOOLS = [CUSTOMER_SERVICE_TOOLS[0]]     # search_knowledge_base only
+TICKET_TOOLS = CUSTOMER_SERVICE_TOOLS      # All tools
 
-    print("Response:", result.response)
-    for step in result.steps:
-        if step.tool_call:
-            print(f"  Tool: {step.tool_call.name} → {step.tool_result}")
+specialists = {
+    "order_specialist": AgentConfig(
+        name="Order Specialist",
+        system_prompt="You help customers with order-related questions. Look up orders and provide status updates.",
+        tools=ORDER_TOOLS,
+    ),
+    "product_specialist": AgentConfig(
+        name="Product Specialist",
+        system_prompt="You answer questions about products, features, and policies using the knowledge base.",
+        tools=KB_TOOLS,
+    ),
+    "support_specialist": AgentConfig(
+        name="Support Specialist",
+        system_prompt="You handle complex issues that may require creating support tickets. Try to resolve first.",
+        tools=TICKET_TOOLS,
+        max_iterations=8,
+    ),
+}
 
-    # Expected flow:
-    # 1. lookup_customer(email="jane@example.com") → customer profile
-    # 2. search_orders(customer_id="CUST-12345") → order list
-    # 3. search_knowledge_base(query="refund policy") → policy info
-    # 4. initiate_refund(order_id="ORD-98765", reason="defective") → refund confirmation
-    # 5. Final response summarizing the refund
+
+async def demo_orchestrator(client: LLMClient) -> None:
+    """Demonstrates the orchestrator routing different requests."""
+    orchestrator = OrchestratorAgent(client, specialists)
+
+    # These would be routed to different specialists
+    queries = [
+        "Where is my order ORD-12345?",          # -> order_specialist
+        "What's your return policy?",             # -> product_specialist
+        "My product is broken and I need help",   # -> support_specialist
+    ]
+
+    for query in queries:
+        print(f"\nUser: {query}")
+        response = await orchestrator.route(query)
+        print(f"Agent: {response}")
