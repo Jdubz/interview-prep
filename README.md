@@ -35,13 +35,13 @@ Each module contains 3 files:
 
 ---
 
-## Company Study Tracks
+## Company Study Guides
 
-Targeted prep for specific company interviews. Each track covers the company's product, tech stack, team domain, and likely interview questions.
+Targeted prep for specific company interviews. Each guide covers the company's product, tech stack, team domain, and likely interview questions.
 
-| Company | Role | Modules | Focus |
-|---------|------|---------|-------|
-| [Temporal Technologies](companies/temporal/) | Senior SWE — Billing/Metering/Cloud Nexus | 7 | Temporal internals, Go, billing systems, data pipelines, platform architecture |
+| Company | Role | Focus |
+|---------|------|-------|
+| [Temporal Technologies](companies/temporal.md) | Senior SWE — Billing/Metering/Cloud Nexus | Temporal internals, Go, billing systems, data pipelines, platform architecture |
 
 ---
 
