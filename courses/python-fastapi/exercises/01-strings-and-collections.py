@@ -55,8 +55,12 @@ from collections import Counter, defaultdict
 
 def group_anagrams(words: list[str]) -> list[list[str]]:
     """Group anagrams from a list of strings."""
-    # TODO: Implement
-    raise NotImplementedError()
+    anagramGroups: dict[tuple, list[str]] = defaultdict(list)
+    for word in words:
+        key = tuple(sorted(word))
+        anagramGroups[key].append(word)
+
+    return list(anagramGroups.values())
 
 
 # ============================================================================
@@ -103,8 +107,16 @@ def group_anagrams(words: list[str]) -> list[list[str]]:
 
 def flatten_dict(nested: dict, prefix: str = "", sep: str = ".") -> dict:
     """Flatten a nested dictionary into dot-separated keys."""
-    # TODO: Implement
-    raise NotImplementedError()
+    result = {}
+    for key, value in nested.items():
+        new_key = f"{prefix}{sep}{key}" if prefix else key
+        if isinstance(value, dict):
+            result.update(flatten_dict(value, new_key, sep))
+        else:
+            result[new_key] = value
+
+    return result
+
 
 
 # ============================================================================
@@ -152,8 +164,10 @@ def flatten_dict(nested: dict, prefix: str = "", sep: str = ".") -> dict:
 
 def most_frequent(text: str, n: int = 3) -> list[tuple[str, int]]:
     """Return the N most frequent words in text."""
-    # TODO: Implement
-    raise NotImplementedError()
+    words = [w.strip(".,!?;:\"'()").lower() for w in text.split()]
+    words = [w for w in words if w]
+
+    return Counter(words).most_common(n)
 
 
 # ============================================================================
@@ -205,8 +219,18 @@ def most_frequent(text: str, n: int = 3) -> list[tuple[str, int]]:
 
 def merge_intervals(intervals: list[tuple[int, int]]) -> list[tuple[int, int]]:
     """Merge overlapping intervals."""
-    # TODO: Implement
-    raise NotImplementedError()
+    if not intervals:
+        return []
+    sorted_intervals = sorted(intervals)
+    merged = [sorted_intervals[0]]
+    for start, end in sorted_intervals[1:]:
+        last_start, last_end = merged[-1]
+        if start <= last_end:
+            merged[-1] = (last_start, max(last_end, end))
+        else:
+            merged.append((start, end))
+
+    return merged
 
 
 # ============================================================================
@@ -262,9 +286,13 @@ def merge_intervals(intervals: list[tuple[int, int]]) -> list[tuple[int, int]]:
 
 def build_inverted_index(documents: list[tuple[int, str]]) -> dict[str, set[int]]:
     """Build an inverted index mapping words to document IDs."""
-    # TODO: Implement
-    raise NotImplementedError()
+    index = defaultdict(set)
+    for id, text in documents:
+        words = text.strip(".,!?;:\"'()").lower().split()
+        for word in [w for w in words if w]:
+            index[word].add(id)
 
+    return index
 
 # ============================================================================
 # EXERCISE 6: Matrix Rotation
@@ -329,145 +357,149 @@ def rotate_matrix(matrix: list[list[int]]) -> list[list[int]]:
 # TESTS -- Uncomment to verify your implementations
 # ============================================================================
 
-# def test_group_anagrams():
-#     print("\n=== EXERCISE 1: Group Anagrams ===")
-#     result = group_anagrams(["eat", "tea", "tan", "ate", "nat", "bat"])
-#     # Sort inner lists and outer list for comparison
-#     normalized = sorted(sorted(group) for group in result)
-#     assert normalized == [["ate", "eat", "tea"], ["bat"], ["nat", "tan"]]
-#     print(f"Grouped: {result}")
-#
-#     # Edge cases
-#     assert group_anagrams([]) == []
-#     assert group_anagrams(["", ""]) == [["", ""]]
-#     assert group_anagrams(["abc"]) == [["abc"]]
-#     print("Edge cases passed")
-#     print("EXERCISE 1: PASSED")
-#
-#
-# def test_flatten_dict():
-#     print("\n=== EXERCISE 2: Flatten Nested Dict ===")
-#     result = flatten_dict({"a": {"b": 1, "c": {"d": 2}}, "e": 3})
-#     assert result == {"a.b": 1, "a.c.d": 2, "e": 3}
-#     print(f"Flattened: {result}")
-#
-#     # Flat dict unchanged
-#     assert flatten_dict({"x": 1, "y": 2}) == {"x": 1, "y": 2}
-#
-#     # Empty dict
-#     assert flatten_dict({}) == {}
-#
-#     # Deeply nested
-#     deep = {"a": {"b": {"c": {"d": {"e": 5}}}}}
-#     assert flatten_dict(deep) == {"a.b.c.d.e": 5}
-#     print("Edge cases passed")
-#     print("EXERCISE 2: PASSED")
-#
-#
-# def test_most_frequent():
-#     print("\n=== EXERCISE 3: Most Frequent Words ===")
-#     result = most_frequent("the cat sat on the mat the cat", n=2)
-#     assert result == [("the", 3), ("cat", 2)]
-#     print(f"Top 2: {result}")
-#
-#     # Case insensitive
-#     result2 = most_frequent("Hello hello HELLO world", n=1)
-#     assert result2 == [("hello", 3)]
-#
-#     # Punctuation stripping
-#     result3 = most_frequent("yes! yes. yes? no.", n=2)
-#     assert result3 == [("yes", 3), ("no", 1)]
-#     print("Edge cases passed")
-#     print("EXERCISE 3: PASSED")
-#
-#
-# def test_merge_intervals():
-#     print("\n=== EXERCISE 4: Merge Intervals ===")
-#     result = merge_intervals([(1, 3), (2, 6), (8, 10), (15, 18)])
-#     assert result == [(1, 6), (8, 10), (15, 18)]
-#     print(f"Merged: {result}")
-#
-#     # Touching intervals
-#     assert merge_intervals([(1, 3), (3, 5)]) == [(1, 5)]
-#
-#     # Already merged
-#     assert merge_intervals([(1, 2), (5, 6)]) == [(1, 2), (5, 6)]
-#
-#     # Empty
-#     assert merge_intervals([]) == []
-#
-#     # Single
-#     assert merge_intervals([(1, 5)]) == [(1, 5)]
-#
-#     # Unsorted input
-#     assert merge_intervals([(5, 6), (1, 3), (2, 4)]) == [(1, 4), (5, 6)]
-#     print("Edge cases passed")
-#     print("EXERCISE 4: PASSED")
-#
-#
-# def test_inverted_index():
-#     print("\n=== EXERCISE 5: Inverted Index ===")
-#     docs = [(1, "the cat sat"), (2, "the dog sat"), (3, "the cat played")]
-#     index = build_inverted_index(docs)
-#     assert index["cat"] == {1, 3}
-#     assert index["sat"] == {1, 2}
-#     assert index["the"] == {1, 2, 3}
-#     assert index["dog"] == {2}
-#     assert index["played"] == {3}
-#     print(f"Index entries: {len(index)}")
-#
-#     # Empty input
-#     assert build_inverted_index([]) == {}
-#     print("Edge cases passed")
-#     print("EXERCISE 5: PASSED")
-#
-#
-# def test_rotate_matrix():
-#     print("\n=== EXERCISE 6: Matrix Rotation ===")
-#     matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
-#     rotate_matrix(matrix)
-#     assert matrix == [[7, 4, 1], [8, 5, 2], [9, 6, 3]]
-#     print(f"Rotated 3x3: {matrix}")
-#
-#     # 2x2
-#     m2 = [[1, 2], [3, 4]]
-#     rotate_matrix(m2)
-#     assert m2 == [[3, 1], [4, 2]]
-#
-#     # 1x1
-#     m1 = [[42]]
-#     rotate_matrix(m1)
-#     assert m1 == [[42]]
-#     print("Edge cases passed")
-#     print("EXERCISE 6: PASSED")
+def test_group_anagrams():
+    print("\n=== EXERCISE 1: Group Anagrams ===")
+    result = group_anagrams(["eat", "tea", "tan", "ate", "nat", "bat"])
+    # Sort inner lists and outer list for comparison
+    normalized = sorted(sorted(group) for group in result)
+    assert normalized == [["ate", "eat", "tea"], ["bat"], ["nat", "tan"]]
+    print(f"Grouped: {result}")
+
+    # Edge cases
+    assert group_anagrams([]) == []
+    assert group_anagrams(["", ""]) == [["", ""]]
+    assert group_anagrams(["abc"]) == [["abc"]]
+    print("Edge cases passed")
+    print("EXERCISE 1: PASSED")
+
+
+def test_flatten_dict():
+    print("\n=== EXERCISE 2: Flatten Nested Dict ===")
+    result = flatten_dict({"a": {"b": 1, "c": {"d": 2}}, "e": 3})
+    assert result == {"a.b": 1, "a.c.d": 2, "e": 3}
+    print(f"Flattened: {result}")
+
+    # Flat dict unchanged
+    assert flatten_dict({"x": 1, "y": 2}) == {"x": 1, "y": 2}
+
+    # Empty dict
+    assert flatten_dict({}) == {}
+
+    # Deeply nested
+    deep = {"a": {"b": {"c": {"d": {"e": 5}}}}}
+    assert flatten_dict(deep) == {"a.b.c.d.e": 5}
+    print("Edge cases passed")
+    print("EXERCISE 2: PASSED")
+
+
+def test_most_frequent():
+    print("\n=== EXERCISE 3: Most Frequent Words ===")
+    result = most_frequent("the cat sat on the mat the cat", n=2)
+    assert result == [("the", 3), ("cat", 2)]
+    print(f"Top 2: {result}")
+
+    # Case insensitive
+    result2 = most_frequent("Hello hello HELLO world", n=1)
+    assert result2 == [("hello", 3)]
+
+    # Punctuation stripping
+    result3 = most_frequent("yes! yes. yes? no.", n=2)
+    assert result3 == [("yes", 3), ("no", 1)]
+    print("Edge cases passed")
+    print("EXERCISE 3: PASSED")
+
+
+def test_merge_intervals():
+    print("\n=== EXERCISE 4: Merge Intervals ===")
+    result = merge_intervals([(1, 3), (2, 6), (8, 10), (15, 18)])
+    assert result == [(1, 6), (8, 10), (15, 18)]
+    print(f"Merged: {result}")
+
+    # Touching intervals
+    assert merge_intervals([(1, 3), (3, 5)]) == [(1, 5)]
+
+    # Already merged
+    assert merge_intervals([(1, 2), (5, 6)]) == [(1, 2), (5, 6)]
+
+    # Empty
+    assert merge_intervals([]) == []
+
+    # Single
+    assert merge_intervals([(1, 5)]) == [(1, 5)]
+
+    # Unsorted input
+    assert merge_intervals([(5, 6), (1, 3), (2, 4)]) == [(1, 4), (5, 6)]
+    print("Edge cases passed")
+    print("EXERCISE 4: PASSED")
+
+
+def test_inverted_index():
+    print("\n=== EXERCISE 5: Inverted Index ===")
+    docs = [(1, "the cat sat"), (2, "the dog sat"), (3, "the cat played")]
+    index = build_inverted_index(docs)
+    assert index["cat"] == {1, 3}
+    assert index["sat"] == {1, 2}
+    assert index["the"] == {1, 2, 3}
+    assert index["dog"] == {2}
+    assert index["played"] == {3}
+    print(f"Index entries: {len(index)}")
+
+    # Empty input
+    assert build_inverted_index([]) == {}
+    print("Edge cases passed")
+    print("EXERCISE 5: PASSED")
+
+
+def test_rotate_matrix():
+    print("\n=== EXERCISE 6: Matrix Rotation ===")
+    matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+    rotate_matrix(matrix)
+    assert matrix == [[7, 4, 1], [8, 5, 2], [9, 6, 3]]
+    print(f"Rotated 3x3: {matrix}")
+
+    # 2x2
+    m2 = [[1, 2], [3, 4]]
+    rotate_matrix(m2)
+    assert m2 == [[3, 1], [4, 2]]
+
+    # 1x1
+    m1 = [[42]]
+    rotate_matrix(m1)
+    assert m1 == [[42]]
+    print("Edge cases passed")
+    print("EXERCISE 6: PASSED")
 
 
 if __name__ == "__main__":
-    exercises = [
-        ("1 - Group Anagrams", group_anagrams, [["eat", "tea"]]),
-        ("2 - Flatten Nested Dict", flatten_dict, [{"a": {"b": 1}}]),
-        ("3 - Most Frequent Words", most_frequent, ["hello world hello"]),
-        ("4 - Merge Intervals", merge_intervals, [[(1, 3), (2, 6)]]),
-        ("5 - Inverted Index", build_inverted_index, [[(1, "hello world")]]),
-        ("6 - Matrix Rotation", rotate_matrix, [[[1, 2], [3, 4]]]),
+    print("Strings & Collections Exercises")
+    print("=" * 60)
+
+    tests = [
+        ("Exercise 1: Group Anagrams", test_group_anagrams),
+        ("Exercise 2: Flatten Nested Dict", test_flatten_dict),
+        ("Exercise 3: Most Frequent Words", test_most_frequent),
+        ("Exercise 4: Merge Intervals", test_merge_intervals),
+        ("Exercise 5: Inverted Index", test_inverted_index),
+        ("Exercise 6: Matrix Rotation", test_rotate_matrix),
     ]
 
-    print("Strings & Collections Exercises")
-    print("=" * 40)
-
-    for name, func, args in exercises:
+    passed = 0
+    failed = 0
+    for name, test_fn in tests:
         try:
-            func(*args)
-            print(f"  {name}: IMPLEMENTED")
+            test_fn()
+            passed += 1
         except NotImplementedError:
-            print(f"  {name}: not implemented")
+            print(f"  {name}: NOT IMPLEMENTED")
+            failed += 1
+        except AssertionError as e:
+            print(f"  {name}: FAILED -- {e}")
+            failed += 1
+        except Exception as e:
+            print(f"  {name}: ERROR -- {type(e).__name__}: {e}")
+            failed += 1
 
-    # Uncomment below (and the test functions above) to run full tests:
-    # print()
-    # test_group_anagrams()
-    # test_flatten_dict()
-    # test_most_frequent()
-    # test_merge_intervals()
-    # test_inverted_index()
-    # test_rotate_matrix()
-    # print("\n=== ALL EXERCISES PASSED ===")
+    print()
+    print("=" * 60)
+    print(f"Results: {passed} passed, {failed} failed out of {len(tests)}")
+    print("=" * 60)

@@ -515,171 +515,174 @@ class AsyncPool:
 # TESTS -- Uncomment to verify your implementations
 # ============================================================================
 
-# async def test_sequential_vs_concurrent():
-#     print("\n=== EXERCISE 1: Sequential vs Concurrent ===")
-#     urls = [("/a", 0.05), ("/b", 0.05), ("/c", 0.05)]
-#
-#     start = time.monotonic()
-#     seq_results = await fetch_all_sequential(urls)
-#     seq_time = time.monotonic() - start
-#
-#     start = time.monotonic()
-#     con_results = await fetch_all_concurrent(urls)
-#     con_time = time.monotonic() - start
-#
-#     assert len(seq_results) == 3
-#     assert len(con_results) == 3
-#     assert seq_results == con_results
-#     assert con_time < seq_time  # concurrent should be faster
-#     print(f"Sequential: {seq_time:.3f}s, Concurrent: {con_time:.3f}s")
-#     print(f"Speedup: {seq_time / con_time:.1f}x")
-#     print("EXERCISE 1: PASSED")
-#
-#
-# async def test_semaphore():
-#     print("\n=== EXERCISE 2: Semaphore ===")
-#     urls = [("/a", 0.05), ("/b", 0.05), ("/c", 0.05), ("/d", 0.05)]
-#
-#     start = time.monotonic()
-#     results = await fetch_bounded(urls, max_concurrent=2)
-#     elapsed = time.monotonic() - start
-#
-#     assert len(results) == 4
-#     assert all(r["status"] == 200 for r in results)
-#     # With max_concurrent=2 and 4 items of 0.05s each: ~0.1s
-#     assert elapsed < 0.2
-#     print(f"Bounded fetch: {elapsed:.3f}s for {len(results)} URLs (max_concurrent=2)")
-#     print("EXERCISE 2: PASSED")
-#
-#
-# async def test_async_retry():
-#     print("\n=== EXERCISE 3: Async Retry ===")
-#     attempt_count = 0
-#
-#     @async_retry(max_attempts=3, delay=0.01)
-#     async def flaky_fetch():
-#         nonlocal attempt_count
-#         attempt_count += 1
-#         if attempt_count < 3:
-#             raise ConnectionError("fail")
-#         return "ok"
-#
-#     result = await flaky_fetch()
-#     assert result == "ok"
-#     assert attempt_count == 3
-#     print(f"Succeeded after {attempt_count} attempts")
-#
-#     # All attempts fail
-#     @async_retry(max_attempts=2, delay=0.01)
-#     async def always_fails():
-#         raise ValueError("nope")
-#
-#     try:
-#         await always_fails()
-#         print("ERROR: Should have raised ValueError")
-#     except ValueError:
-#         print("Final exception propagated (expected)")
-#     print("EXERCISE 3: PASSED")
-#
-#
-# async def test_timeout():
-#     print("\n=== EXERCISE 4: Timeout ===")
-#
-#     async def slow():
-#         await asyncio.sleep(10)
-#         return "done"
-#
-#     result = await with_timeout(slow(), timeout=0.05, fallback="timed out")
-#     assert result == "timed out"
-#     print(f"Slow function result: {result}")
-#
-#     async def fast():
-#         await asyncio.sleep(0.01)
-#         return "done"
-#
-#     result = await with_timeout(fast(), timeout=1.0, fallback="timed out")
-#     assert result == "done"
-#     print(f"Fast function result: {result}")
-#     print("EXERCISE 4: PASSED")
-#
-#
-# async def test_pipeline():
-#     print("\n=== EXERCISE 5: Pipeline ===")
-#     items = ["hello", "world", "foo", "bar", "baz"]
-#     results = await run_pipeline(items, num_consumers=2)
-#
-#     assert sorted(results) == sorted(item.upper() for item in items)
-#     print(f"Processed {len(results)} items: {sorted(results)}")
-#     print("EXERCISE 5: PASSED")
-#
-#
-# async def test_async_pool():
-#     print("\n=== EXERCISE 6: Async Pool ===")
-#     async with AsyncPool(max_size=2) as pool:
-#         conn1 = await pool.acquire()
-#         conn2 = await pool.acquire()
-#
-#         result = await conn1.execute("SELECT 1")
-#         assert "SELECT 1" in result
-#         print(f"Query result: {result}")
-#
-#         # Pool exhausted
-#         try:
-#             await pool.acquire()
-#             print("ERROR: Should have raised RuntimeError")
-#         except RuntimeError as e:
-#             print(f"Pool exhausted: {e}")
-#
-#         await pool.release(conn1)
-#         conn3 = await pool.acquire()  # should work now
-#         assert conn3 is conn1
-#         print("Connection reuse works")
-#
-#         await pool.release(conn2)
-#         await pool.release(conn3)
-#     print("EXERCISE 6: PASSED")
-#
-#
-# async def run_all_tests():
-#     await test_sequential_vs_concurrent()
-#     await test_semaphore()
-#     await test_async_retry()
-#     await test_timeout()
-#     await test_pipeline()
-#     await test_async_pool()
-#     print("\n=== ALL EXERCISES PASSED ===")
+async def test_sequential_vs_concurrent():
+    print("\n=== EXERCISE 1: Sequential vs Concurrent ===")
+    urls = [("/a", 0.05), ("/b", 0.05), ("/c", 0.05)]
+
+    start = time.monotonic()
+    seq_results = await fetch_all_sequential(urls)
+    seq_time = time.monotonic() - start
+
+    start = time.monotonic()
+    con_results = await fetch_all_concurrent(urls)
+    con_time = time.monotonic() - start
+
+    assert len(seq_results) == 3
+    assert len(con_results) == 3
+    assert seq_results == con_results
+    assert con_time < seq_time  # concurrent should be faster
+    print(f"Sequential: {seq_time:.3f}s, Concurrent: {con_time:.3f}s")
+    print(f"Speedup: {seq_time / con_time:.1f}x")
+    print("EXERCISE 1: PASSED")
+
+
+async def test_semaphore():
+    print("\n=== EXERCISE 2: Semaphore ===")
+    urls = [("/a", 0.05), ("/b", 0.05), ("/c", 0.05), ("/d", 0.05)]
+
+    start = time.monotonic()
+    results = await fetch_bounded(urls, max_concurrent=2)
+    elapsed = time.monotonic() - start
+
+    assert len(results) == 4
+    assert all(r["status"] == 200 for r in results)
+    # With max_concurrent=2 and 4 items of 0.05s each: ~0.1s
+    assert elapsed < 0.2
+    print(f"Bounded fetch: {elapsed:.3f}s for {len(results)} URLs (max_concurrent=2)")
+    print("EXERCISE 2: PASSED")
+
+
+async def test_async_retry():
+    print("\n=== EXERCISE 3: Async Retry ===")
+    attempt_count = 0
+
+    @async_retry(max_attempts=3, delay=0.01)
+    async def flaky_fetch():
+        nonlocal attempt_count
+        attempt_count += 1
+        if attempt_count < 3:
+            raise ConnectionError("fail")
+        return "ok"
+
+    result = await flaky_fetch()
+    assert result == "ok"
+    assert attempt_count == 3
+    print(f"Succeeded after {attempt_count} attempts")
+
+    # All attempts fail
+    @async_retry(max_attempts=2, delay=0.01)
+    async def always_fails():
+        raise ValueError("nope")
+
+    try:
+        await always_fails()
+        print("ERROR: Should have raised ValueError")
+    except ValueError:
+        print("Final exception propagated (expected)")
+    print("EXERCISE 3: PASSED")
+
+
+async def test_timeout():
+    print("\n=== EXERCISE 4: Timeout ===")
+
+    async def slow():
+        await asyncio.sleep(10)
+        return "done"
+
+    result = await with_timeout(slow(), timeout=0.05, fallback="timed out")
+    assert result == "timed out"
+    print(f"Slow function result: {result}")
+
+    async def fast():
+        await asyncio.sleep(0.01)
+        return "done"
+
+    result = await with_timeout(fast(), timeout=1.0, fallback="timed out")
+    assert result == "done"
+    print(f"Fast function result: {result}")
+    print("EXERCISE 4: PASSED")
+
+
+async def test_pipeline():
+    print("\n=== EXERCISE 5: Pipeline ===")
+    items = ["hello", "world", "foo", "bar", "baz"]
+    results = await run_pipeline(items, num_consumers=2)
+
+    assert sorted(results) == sorted(item.upper() for item in items)
+    print(f"Processed {len(results)} items: {sorted(results)}")
+    print("EXERCISE 5: PASSED")
+
+
+async def test_async_pool():
+    print("\n=== EXERCISE 6: Async Pool ===")
+    async with AsyncPool(max_size=2) as pool:
+        conn1 = await pool.acquire()
+        conn2 = await pool.acquire()
+
+        result = await conn1.execute("SELECT 1")
+        assert "SELECT 1" in result
+        print(f"Query result: {result}")
+
+        # Pool exhausted
+        try:
+            await pool.acquire()
+            print("ERROR: Should have raised RuntimeError")
+        except RuntimeError as e:
+            print(f"Pool exhausted: {e}")
+
+        await pool.release(conn1)
+        conn3 = await pool.acquire()  # should work now
+        assert conn3 is conn1
+        print("Connection reuse works")
+
+        await pool.release(conn2)
+        await pool.release(conn3)
+    print("EXERCISE 6: PASSED")
+
+
+async def run_all_tests():
+    await test_sequential_vs_concurrent()
+    await test_semaphore()
+    await test_async_retry()
+    await test_timeout()
+    await test_pipeline()
+    await test_async_pool()
+    print("\n=== ALL EXERCISES PASSED ===")
 
 
 if __name__ == "__main__":
     print("Async & Concurrency Exercises")
-    print("=" * 40)
+    print("=" * 60)
 
-    import warnings
-    warnings.filterwarnings("ignore", message="coroutine.*was never awaited")
-
-    async def _check_all():
-        async def _noop():
-            pass
-
-        exercises = [
-            ("1 - Sequential to Concurrent", "async", lambda: fetch_one("/test", 0)),
-            ("2 - Semaphore-Bounded Fetcher", "async", lambda: fetch_bounded([], 1)),
-            ("3 - Async Retry", "sync", lambda: async_retry()),
-            ("4 - Timeout Wrapper", "async", lambda: with_timeout(_noop(), 1)),
-            ("5 - Producer/Consumer", "async", lambda: run_pipeline([], 1)),
-            ("6 - Async Context Manager", "sync", lambda: AsyncPool(1)),
+    async def run_tests():
+        tests = [
+            ("Exercise 1: Sequential vs Concurrent", test_sequential_vs_concurrent),
+            ("Exercise 2: Semaphore-Bounded Fetcher", test_semaphore),
+            ("Exercise 3: Async Retry", test_async_retry),
+            ("Exercise 4: Timeout Wrapper", test_timeout),
+            ("Exercise 5: Producer/Consumer Pipeline", test_pipeline),
+            ("Exercise 6: Async Context Manager", test_async_pool),
         ]
 
-        for name, kind, factory in exercises:
+        passed = 0
+        failed = 0
+        for name, test_fn in tests:
             try:
-                result = factory()
-                if kind == "async":
-                    await result
-                print(f"  {name}: IMPLEMENTED")
+                await test_fn()
+                passed += 1
             except NotImplementedError:
-                print(f"  {name}: not implemented")
+                print(f"  {name}: NOT IMPLEMENTED")
+                failed += 1
+            except AssertionError as e:
+                print(f"  {name}: FAILED -- {e}")
+                failed += 1
+            except Exception as e:
+                print(f"  {name}: ERROR -- {type(e).__name__}: {e}")
+                failed += 1
 
-    asyncio.run(_check_all())
+        print()
+        print("=" * 60)
+        print(f"Results: {passed} passed, {failed} failed out of {len(tests)}")
+        print("=" * 60)
 
-    # Uncomment below (and the test functions above) to run full tests:
-    # asyncio.run(run_all_tests())
+    asyncio.run(run_tests())

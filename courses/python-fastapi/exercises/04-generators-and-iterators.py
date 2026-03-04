@@ -407,143 +407,147 @@ class Timer:
 # TESTS -- Uncomment to verify your implementations
 # ============================================================================
 
-# def test_chunked():
-#     print("\n=== EXERCISE 1: Chunked Iterator ===")
-#     assert list(chunked(range(7), 3)) == [[0, 1, 2], [3, 4, 5], [6]]
-#     assert list(chunked(range(6), 3)) == [[0, 1, 2], [3, 4, 5]]
-#     assert list(chunked([], 5)) == []
-#     assert list(chunked([1], 5)) == [[1]]
-#     print("All cases passed")
-#
-#     # Works with generators
-#     gen = (x for x in range(5))
-#     assert list(chunked(gen, 2)) == [[0, 1], [2, 3], [4]]
-#     print("Generator input works")
-#
-#     try:
-#         list(chunked([1], 0))
-#         print("ERROR: Should have raised ValueError")
-#     except ValueError:
-#         print("Invalid size rejected (expected)")
-#     print("EXERCISE 1: PASSED")
-#
-#
-# def test_window():
-#     print("\n=== EXERCISE 2: Sliding Window ===")
-#     result = list(window([1, 2, 3, 4, 5], 3))
-#     assert result == [(1, 2, 3), (2, 3, 4), (3, 4, 5)]
-#     print(f"Windows: {result}")
-#
-#     assert list(window([1, 2], 3)) == []
-#     assert list(window([1, 2, 3], 3)) == [(1, 2, 3)]
-#     assert list(window([1, 2, 3], 1)) == [(1,), (2,), (3,)]
-#     print("Edge cases passed")
-#
-#     try:
-#         list(window([1], 0))
-#         print("ERROR: Should have raised ValueError")
-#     except ValueError:
-#         print("Invalid size rejected (expected)")
-#     print("EXERCISE 2: PASSED")
-#
-#
-# def test_fibonacci():
-#     print("\n=== EXERCISE 3: Fibonacci ===")
-#     assert take(8, fibonacci()) == [0, 1, 1, 2, 3, 5, 8, 13]
-#     assert take(1, fibonacci()) == [0]
-#     assert take(0, fibonacci()) == []
-#     print(f"First 8: {take(8, fibonacci())}")
-#
-#     # take works with any iterable
-#     assert take(3, range(100)) == [0, 1, 2]
-#     assert take(5, "abcdef") == ["a", "b", "c", "d", "e"]
-#     print("take() works with other iterables")
-#     print("EXERCISE 3: PASSED")
-#
-#
-# def test_csv_parser():
-#     print("\n=== EXERCISE 4: CSV Parser ===")
-#     lines = ["name, age, city", "Alice, 30, NYC", "Bob, 25, LA", ""]
-#     result = list(parse_csv(lines))
-#     assert result == [
-#         {"name": "Alice", "age": "30", "city": "NYC"},
-#         {"name": "Bob", "age": "25", "city": "LA"},
-#     ]
-#     print(f"Parsed {len(result)} rows")
-#
-#     # Empty input (header only)
-#     assert list(parse_csv(["name, age"])) == []
-#
-#     # No lines at all
-#     assert list(parse_csv([])) == []
-#     print("Edge cases passed")
-#     print("EXERCISE 4: PASSED")
-#
-#
-# def test_flatten():
-#     print("\n=== EXERCISE 5: Flatten ===")
-#     assert list(flatten([1, [2, [3, 4], 5], [6]])) == [1, 2, 3, 4, 5, 6]
-#     assert list(flatten([1, "hello", [2, "world"]])) == [1, "hello", 2, "world"]
-#     assert list(flatten([])) == []
-#     assert list(flatten([1, 2, 3])) == [1, 2, 3]
-#     print("Basic and string cases passed")
-#
-#     # Mixed types
-#     result = list(flatten([[1, 2], (3, 4)]))
-#     assert result == [1, 2, 3, 4]
-#
-#     # Deeply nested
-#     assert list(flatten([[[[[1]]]]])) == [1]
-#     print("Deep nesting passed")
-#     print("EXERCISE 5: PASSED")
-#
-#
-# def test_timer():
-#     print("\n=== EXERCISE 6: Timer ===")
-#     with Timer("test") as t:
-#         time.sleep(0.05)
-#
-#     assert t.elapsed >= 0.04  # allow some slack
-#     assert t.label == "test"
-#     print(f"Timer: {t}")
-#
-#     # Nested timers
-#     with Timer("outer") as outer:
-#         time.sleep(0.02)
-#         with Timer("inner") as inner:
-#             time.sleep(0.02)
-#
-#     assert inner.elapsed < outer.elapsed
-#     print(f"Outer: {outer}, Inner: {inner}")
-#     print("EXERCISE 6: PASSED")
+def test_chunked():
+    print("\n=== EXERCISE 1: Chunked Iterator ===")
+    assert list(chunked(range(7), 3)) == [[0, 1, 2], [3, 4, 5], [6]]
+    assert list(chunked(range(6), 3)) == [[0, 1, 2], [3, 4, 5]]
+    assert list(chunked([], 5)) == []
+    assert list(chunked([1], 5)) == [[1]]
+    print("All cases passed")
+
+    # Works with generators
+    gen = (x for x in range(5))
+    assert list(chunked(gen, 2)) == [[0, 1], [2, 3], [4]]
+    print("Generator input works")
+
+    try:
+        list(chunked([1], 0))
+        print("ERROR: Should have raised ValueError")
+    except ValueError:
+        print("Invalid size rejected (expected)")
+    print("EXERCISE 1: PASSED")
+
+
+def test_window():
+    print("\n=== EXERCISE 2: Sliding Window ===")
+    result = list(window([1, 2, 3, 4, 5], 3))
+    assert result == [(1, 2, 3), (2, 3, 4), (3, 4, 5)]
+    print(f"Windows: {result}")
+
+    assert list(window([1, 2], 3)) == []
+    assert list(window([1, 2, 3], 3)) == [(1, 2, 3)]
+    assert list(window([1, 2, 3], 1)) == [(1,), (2,), (3,)]
+    print("Edge cases passed")
+
+    try:
+        list(window([1], 0))
+        print("ERROR: Should have raised ValueError")
+    except ValueError:
+        print("Invalid size rejected (expected)")
+    print("EXERCISE 2: PASSED")
+
+
+def test_fibonacci():
+    print("\n=== EXERCISE 3: Fibonacci ===")
+    assert take(8, fibonacci()) == [0, 1, 1, 2, 3, 5, 8, 13]
+    assert take(1, fibonacci()) == [0]
+    assert take(0, fibonacci()) == []
+    print(f"First 8: {take(8, fibonacci())}")
+
+    # take works with any iterable
+    assert take(3, range(100)) == [0, 1, 2]
+    assert take(5, "abcdef") == ["a", "b", "c", "d", "e"]
+    print("take() works with other iterables")
+    print("EXERCISE 3: PASSED")
+
+
+def test_csv_parser():
+    print("\n=== EXERCISE 4: CSV Parser ===")
+    lines = ["name, age, city", "Alice, 30, NYC", "Bob, 25, LA", ""]
+    result = list(parse_csv(lines))
+    assert result == [
+        {"name": "Alice", "age": "30", "city": "NYC"},
+        {"name": "Bob", "age": "25", "city": "LA"},
+    ]
+    print(f"Parsed {len(result)} rows")
+
+    # Empty input (header only)
+    assert list(parse_csv(["name, age"])) == []
+
+    # No lines at all
+    assert list(parse_csv([])) == []
+    print("Edge cases passed")
+    print("EXERCISE 4: PASSED")
+
+
+def test_flatten():
+    print("\n=== EXERCISE 5: Flatten ===")
+    assert list(flatten([1, [2, [3, 4], 5], [6]])) == [1, 2, 3, 4, 5, 6]
+    assert list(flatten([1, "hello", [2, "world"]])) == [1, "hello", 2, "world"]
+    assert list(flatten([])) == []
+    assert list(flatten([1, 2, 3])) == [1, 2, 3]
+    print("Basic and string cases passed")
+
+    # Mixed types
+    result = list(flatten([[1, 2], (3, 4)]))
+    assert result == [1, 2, 3, 4]
+
+    # Deeply nested
+    assert list(flatten([[[[[1]]]]])) == [1]
+    print("Deep nesting passed")
+    print("EXERCISE 5: PASSED")
+
+
+def test_timer():
+    print("\n=== EXERCISE 6: Timer ===")
+    with Timer("test") as t:
+        time.sleep(0.05)
+
+    assert t.elapsed >= 0.04  # allow some slack
+    assert t.label == "test"
+    print(f"Timer: {t}")
+
+    # Nested timers
+    with Timer("outer") as outer:
+        time.sleep(0.02)
+        with Timer("inner") as inner:
+            time.sleep(0.02)
+
+    assert inner.elapsed < outer.elapsed
+    print(f"Outer: {outer}, Inner: {inner}")
+    print("EXERCISE 6: PASSED")
 
 
 if __name__ == "__main__":
-    exercises = [
-        ("1 - Chunked Iterator", lambda: list(chunked([1, 2, 3], 2))),
-        ("2 - Sliding Window", lambda: list(window([1, 2, 3], 2))),
-        ("3 - Fibonacci Generator", lambda: take(5, fibonacci())),
-        ("4 - CSV Line Parser", lambda: list(parse_csv(["a,b", "1,2"]))),
-        ("5 - Flatten Deeply Nested", lambda: list(flatten([1, [2]]))),
-        ("6 - Timed Context Manager", lambda: Timer("test")),
+    print("Generators & Iterators Exercises")
+    print("=" * 60)
+
+    tests = [
+        ("Exercise 1: Chunked Iterator", test_chunked),
+        ("Exercise 2: Sliding Window", test_window),
+        ("Exercise 3: Fibonacci Generator", test_fibonacci),
+        ("Exercise 4: CSV Line Parser", test_csv_parser),
+        ("Exercise 5: Flatten Deeply Nested", test_flatten),
+        ("Exercise 6: Timed Context Manager", test_timer),
     ]
 
-    print("Generators & Iterators Exercises")
-    print("=" * 40)
-
-    for name, factory in exercises:
+    passed = 0
+    failed = 0
+    for name, test_fn in tests:
         try:
-            factory()
-            print(f"  {name}: IMPLEMENTED")
+            test_fn()
+            passed += 1
         except NotImplementedError:
-            print(f"  {name}: not implemented")
+            print(f"  {name}: NOT IMPLEMENTED")
+            failed += 1
+        except AssertionError as e:
+            print(f"  {name}: FAILED -- {e}")
+            failed += 1
+        except Exception as e:
+            print(f"  {name}: ERROR -- {type(e).__name__}: {e}")
+            failed += 1
 
-    # Uncomment below (and the test functions above) to run full tests:
-    # print()
-    # test_chunked()
-    # test_window()
-    # test_fibonacci()
-    # test_csv_parser()
-    # test_flatten()
-    # test_timer()
-    # print("\n=== ALL EXERCISES PASSED ===")
+    print()
+    print("=" * 60)
+    print(f"Results: {passed} passed, {failed} failed out of {len(tests)}")
+    print("=" * 60)

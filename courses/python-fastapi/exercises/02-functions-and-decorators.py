@@ -410,182 +410,183 @@ def rate_limiter(max_calls: int = 5, period: float = 1.0) -> Callable[[F], F]:
 # TESTS -- Uncomment to verify your implementations
 # ============================================================================
 
-# def test_memoize():
-#     print("\n=== EXERCISE 1: Memoize ===")
-#     call_count = 0
-#
-#     @memoize
-#     def fib(n):
-#         nonlocal call_count
-#         call_count += 1
-#         if n < 2:
-#             return n
-#         return fib(n - 1) + fib(n - 2)
-#
-#     result = fib(30)
-#     assert result == 832040
-#     assert call_count == 31, f"Expected 31 calls, got {call_count}"
-#     assert len(fib.cache) == 31
-#     print(f"fib(30) = {result}, calls = {call_count}, cached = {len(fib.cache)}")
-#
-#     # Verify cache hit
-#     call_count = 0
-#     fib(30)
-#     assert call_count == 0, "Should have hit cache"
-#     print("Cache hit verified")
-#     print("EXERCISE 1: PASSED")
-#
-#
-# def test_retry():
-#     print("\n=== EXERCISE 2: Retry ===")
-#     attempt_count = 0
-#
-#     @retry(max_attempts=3, delay=0.01)
-#     def flaky():
-#         nonlocal attempt_count
-#         attempt_count += 1
-#         if attempt_count < 3:
-#             raise ConnectionError("fail")
-#         return "ok"
-#
-#     result = flaky()
-#     assert result == "ok"
-#     assert attempt_count == 3
-#     print(f"Succeeded after {attempt_count} attempts")
-#
-#     # All attempts fail
-#     @retry(max_attempts=2, delay=0.01)
-#     def always_fails():
-#         raise ValueError("nope")
-#
-#     try:
-#         always_fails()
-#         print("ERROR: Should have raised ValueError")
-#     except ValueError:
-#         print("Final exception propagated (expected)")
-#     print("EXERCISE 2: PASSED")
-#
-#
-# def test_pipe():
-#     print("\n=== EXERCISE 3: Pipe ===")
-#     transform = pipe(
-#         lambda x: x * 2,
-#         lambda x: x + 10,
-#         str,
-#     )
-#     assert transform(5) == "20"
-#     print(f"pipe(5) = {transform(5)}")
-#
-#     # Identity
-#     identity = pipe()
-#     assert identity(42) == 42
-#
-#     # Single function
-#     double = pipe(lambda x: x * 2)
-#     assert double(5) == 10
-#     print("Edge cases passed")
-#     print("EXERCISE 3: PASSED")
-#
-#
-# def test_partial():
-#     print("\n=== EXERCISE 4: Partial ===")
-#     def add(a, b, c=0):
-#         return a + b + c
-#
-#     add5 = my_partial(add, 5)
-#     assert add5(3) == 8
-#     assert add5(3, c=10) == 18
-#     print(f"add5(3) = {add5(3)}, add5(3, c=10) = {add5(3, c=10)}")
-#
-#     # Partial with kwargs
-#     add5_c10 = my_partial(add, 5, c=10)
-#     assert add5_c10(3) == 18
-#
-#     # Override kwargs
-#     assert add5_c10(3, c=0) == 8
-#     print("Edge cases passed")
-#     print("EXERCISE 4: PASSED")
-#
-#
-# def test_validate():
-#     print("\n=== EXERCISE 5: Validate ===")
-#
-#     @validate(x=int, y=int)
-#     def add(x, y):
-#         return x + y
-#
-#     assert add(1, 2) == 3
-#     assert add(x=1, y=2) == 3
-#     print(f"add(1, 2) = {add(1, 2)}")
-#
-#     try:
-#         add("1", 2)
-#         print("ERROR: Should have raised TypeError")
-#     except TypeError as e:
-#         print(f"Caught TypeError: {e}")
-#
-#     # Unvalidated args pass through
-#     @validate(x=int)
-#     def greet(x, name="world"):
-#         return f"{x}: hello {name}"
-#
-#     assert greet(1, name="alice") == "1: hello alice"
-#     print("Edge cases passed")
-#     print("EXERCISE 5: PASSED")
-#
-#
-# def test_rate_limiter():
-#     print("\n=== EXERCISE 6: Rate Limiter ===")
-#
-#     @rate_limiter(max_calls=2, period=0.1)
-#     def ping():
-#         return "pong"
-#
-#     assert ping() == "pong"
-#     assert ping() == "pong"
-#
-#     try:
-#         ping()
-#         print("ERROR: Should have raised RuntimeError")
-#     except RuntimeError as e:
-#         print(f"Caught RuntimeError: {e}")
-#
-#     # Wait for period to expire
-#     time.sleep(0.15)
-#     assert ping() == "pong"
-#     print("Rate limit reset after period")
-#     print("EXERCISE 6: PASSED")
+def test_memoize():
+    print("\n=== EXERCISE 1: Memoize ===")
+    call_count = 0
+
+    @memoize
+    def fib(n):
+        nonlocal call_count
+        call_count += 1
+        if n < 2:
+            return n
+        return fib(n - 1) + fib(n - 2)
+
+    result = fib(30)
+    assert result == 832040
+    assert call_count == 31, f"Expected 31 calls, got {call_count}"
+    assert len(fib.cache) == 31
+    print(f"fib(30) = {result}, calls = {call_count}, cached = {len(fib.cache)}")
+
+    # Verify cache hit
+    call_count = 0
+    fib(30)
+    assert call_count == 0, "Should have hit cache"
+    print("Cache hit verified")
+    print("EXERCISE 1: PASSED")
+
+
+def test_retry():
+    print("\n=== EXERCISE 2: Retry ===")
+    attempt_count = 0
+
+    @retry(max_attempts=3, delay=0.01)
+    def flaky():
+        nonlocal attempt_count
+        attempt_count += 1
+        if attempt_count < 3:
+            raise ConnectionError("fail")
+        return "ok"
+
+    result = flaky()
+    assert result == "ok"
+    assert attempt_count == 3
+    print(f"Succeeded after {attempt_count} attempts")
+
+    # All attempts fail
+    @retry(max_attempts=2, delay=0.01)
+    def always_fails():
+        raise ValueError("nope")
+
+    try:
+        always_fails()
+        print("ERROR: Should have raised ValueError")
+    except ValueError:
+        print("Final exception propagated (expected)")
+    print("EXERCISE 2: PASSED")
+
+
+def test_pipe():
+    print("\n=== EXERCISE 3: Pipe ===")
+    transform = pipe(
+        lambda x: x * 2,
+        lambda x: x + 10,
+        str,
+    )
+    assert transform(5) == "20"
+    print(f"pipe(5) = {transform(5)}")
+
+    # Identity
+    identity = pipe()
+    assert identity(42) == 42
+
+    # Single function
+    double = pipe(lambda x: x * 2)
+    assert double(5) == 10
+    print("Edge cases passed")
+    print("EXERCISE 3: PASSED")
+
+
+def test_partial():
+    print("\n=== EXERCISE 4: Partial ===")
+    def add(a, b, c=0):
+        return a + b + c
+
+    add5 = my_partial(add, 5)
+    assert add5(3) == 8
+    assert add5(3, c=10) == 18
+    print(f"add5(3) = {add5(3)}, add5(3, c=10) = {add5(3, c=10)}")
+
+    # Partial with kwargs
+    add5_c10 = my_partial(add, 5, c=10)
+    assert add5_c10(3) == 18
+
+    # Override kwargs
+    assert add5_c10(3, c=0) == 8
+    print("Edge cases passed")
+    print("EXERCISE 4: PASSED")
+
+
+def test_validate():
+    print("\n=== EXERCISE 5: Validate ===")
+
+    @validate(x=int, y=int)
+    def add(x, y):
+        return x + y
+
+    assert add(1, 2) == 3
+    assert add(x=1, y=2) == 3
+    print(f"add(1, 2) = {add(1, 2)}")
+
+    try:
+        add("1", 2)
+        print("ERROR: Should have raised TypeError")
+    except TypeError as e:
+        print(f"Caught TypeError: {e}")
+
+    # Unvalidated args pass through
+    @validate(x=int)
+    def greet(x, name="world"):
+        return f"{x}: hello {name}"
+
+    assert greet(1, name="alice") == "1: hello alice"
+    print("Edge cases passed")
+    print("EXERCISE 5: PASSED")
+
+
+def test_rate_limiter():
+    print("\n=== EXERCISE 6: Rate Limiter ===")
+
+    @rate_limiter(max_calls=2, period=0.1)
+    def ping():
+        return "pong"
+
+    assert ping() == "pong"
+    assert ping() == "pong"
+
+    try:
+        ping()
+        print("ERROR: Should have raised RuntimeError")
+    except RuntimeError as e:
+        print(f"Caught RuntimeError: {e}")
+
+    # Wait for period to expire
+    time.sleep(0.15)
+    assert ping() == "pong"
+    print("Rate limit reset after period")
+    print("EXERCISE 6: PASSED")
 
 
 if __name__ == "__main__":
-    exercises: list[tuple[str, Callable, list]] = [
-        ("1 - Memoize Decorator", memoize, [lambda x: x]),
-        ("2 - Retry Decorator", retry, []),
-        ("3 - Pipe Function", pipe, [lambda x: x]),
-        ("4 - Partial Application", my_partial, [lambda x: x, 1]),
-        ("5 - Validate Decorator", validate, []),
-        ("6 - Rate Limiter", rate_limiter, []),
+    print("Functions & Decorators Exercises")
+    print("=" * 60)
+
+    tests = [
+        ("Exercise 1: Memoize Decorator", test_memoize),
+        ("Exercise 2: Retry Decorator", test_retry),
+        ("Exercise 3: Pipe Function", test_pipe),
+        ("Exercise 4: Partial Application", test_partial),
+        ("Exercise 5: Validate Decorator", test_validate),
+        ("Exercise 6: Rate Limiter", test_rate_limiter),
     ]
 
-    print("Functions & Decorators Exercises")
-    print("=" * 40)
-
-    for name, func, args in exercises:
+    passed = 0
+    failed = 0
+    for name, test_fn in tests:
         try:
-            result = func(*args)
-            # For decorator factories, try calling the result
-            if callable(result) and args:
-                result(lambda: None) if not args else None
-            print(f"  {name}: IMPLEMENTED")
+            test_fn()
+            passed += 1
         except NotImplementedError:
-            print(f"  {name}: not implemented")
+            print(f"  {name}: NOT IMPLEMENTED")
+            failed += 1
+        except AssertionError as e:
+            print(f"  {name}: FAILED -- {e}")
+            failed += 1
+        except Exception as e:
+            print(f"  {name}: ERROR -- {type(e).__name__}: {e}")
+            failed += 1
 
-    # Uncomment below (and the test functions above) to run full tests:
-    # print()
-    # test_memoize()
-    # test_retry()
-    # test_pipe()
-    # test_partial()
-    # test_validate()
-    # test_rate_limiter()
-    # print("\n=== ALL EXERCISES PASSED ===")
+    print()
+    print("=" * 60)
+    print(f"Results: {passed} passed, {failed} failed out of {len(tests)}")
+    print("=" * 60)

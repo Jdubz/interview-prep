@@ -601,201 +601,205 @@ class Stack(Generic[T]):
 # TESTS -- Uncomment to verify your implementations
 # ============================================================================
 
-# def test_money():
-#     print("\n=== EXERCISE 1: Money ===")
-#     m1 = Money(10.50, "USD")
-#     m2 = Money(5.25, "USD")
-#
-#     assert repr(m1) == "Money(10.5, 'USD')"
-#     assert str(m1) == "$10.50"
-#     assert str(Money(10.50, "EUR")) == "10.50 EUR"
-#
-#     assert m1 + m2 == Money(15.75, "USD")
-#     assert m1 - m2 == Money(5.25, "USD")
-#     assert m1 > m2
-#     assert m2 < m1
-#     assert m1 == Money(10.50, "USD")
-#     assert m1 != m2
-#     print(f"{m1} + {m2} = {m1 + m2}")
-#
-#     # Hash works (can use in sets)
-#     money_set = {m1, m2, Money(10.50, "USD")}
-#     assert len(money_set) == 2
-#     print(f"Set size: {len(money_set)} (expected 2)")
-#
-#     # Bool
-#     assert bool(m1) is True
-#     assert bool(Money(0)) is False
-#
-#     # Cross-currency errors
-#     try:
-#         Money(10, "USD") + Money(10, "EUR")
-#         print("ERROR: Should have raised ValueError")
-#     except ValueError:
-#         print("Cross-currency add rejected (expected)")
-#     print("EXERCISE 1: PASSED")
-#
-#
-# def test_linked_list():
-#     print("\n=== EXERCISE 2: Linked List ===")
-#     ll = LinkedList()
-#     ll.append(1)
-#     ll.append(2)
-#     ll.prepend(0)
-#
-#     assert list(ll) == [0, 1, 2]
-#     assert len(ll) == 3
-#     assert 1 in ll
-#     assert 99 not in ll
-#     print(f"List: {ll}")
-#     print(f"Length: {len(ll)}, contains 1: {1 in ll}")
-#
-#     # Empty list
-#     empty = LinkedList()
-#     assert list(empty) == []
-#     assert len(empty) == 0
-#     print("Edge cases passed")
-#     print("EXERCISE 2: PASSED")
-#
-#
-# def test_registry():
-#     print("\n=== EXERCISE 3: Registry ===")
-#     registry.clear()  # reset for test
-#
-#     @register
-#     class JsonParser:
-#         kind = "json"
-#         def parse(self, data): return f"json: {data}"
-#
-#     @register
-#     class XmlParser:
-#         kind = "xml"
-#         def parse(self, data): return f"xml: {data}"
-#
-#     assert get_registered("JsonParser") is JsonParser
-#     assert get_registered("XmlParser") is XmlParser
-#     assert get_registered("Missing") is None
-#     print(f"Registered: {list(registry.keys())}")
-#     print("EXERCISE 3: PASSED")
-#
-#
-# def test_immutable_config():
-#     print("\n=== EXERCISE 4: Immutable Config ===")
-#     config = ImmutableConfig({
-#         "db": {"host": "localhost", "port": 5432},
-#         "debug": True,
-#     })
-#
-#     assert config.debug is True
-#     assert config.db.host == "localhost"
-#     assert config.db.port == 5432
-#     print(f"config.db.host = {config.db.host}")
-#
-#     try:
-#         config.debug = False
-#         print("ERROR: Should have raised AttributeError")
-#     except AttributeError:
-#         print("Mutation blocked (expected)")
-#
-#     try:
-#         del config.debug
-#         print("ERROR: Should have raised AttributeError")
-#     except AttributeError:
-#         print("Deletion blocked (expected)")
-#
-#     try:
-#         config.nonexistent
-#         print("ERROR: Should have raised AttributeError")
-#     except (AttributeError, KeyError):
-#         print("Missing key raised error (expected)")
-#     print("EXERCISE 4: PASSED")
-#
-#
-# def test_observable():
-#     print("\n=== EXERCISE 5: Observable ===")
-#     obs = Observable()
-#     log = []
-#
-#     def on_click(**data):
-#         log.append(data)
-#
-#     obs.on("click", on_click)
-#     obs.emit("click", x=10, y=20)
-#     assert log == [{"x": 10, "y": 20}]
-#     print(f"Event received: {log[-1]}")
-#
-#     obs.emit("click", x=30, y=40)
-#     assert len(log) == 2
-#
-#     obs.off("click", on_click)
-#     obs.emit("click", x=50, y=60)
-#     assert len(log) == 2  # listener was removed
-#     print(f"After off(): {len(log)} events (expected 2)")
-#
-#     # No error on emit with no listeners
-#     obs.emit("nonexistent", foo="bar")
-#     print("EXERCISE 5: PASSED")
-#
-#
-# def test_generic_stack():
-#     print("\n=== EXERCISE 6: Generic Stack ===")
-#     stack: Stack[int] = Stack()
-#     assert stack.is_empty()
-#     assert len(stack) == 0
-#
-#     stack.push(1)
-#     stack.push(2)
-#     stack.push(3)
-#
-#     assert stack.peek() == 3
-#     assert stack.pop() == 3
-#     assert stack.pop() == 2
-#     assert list(stack) == [1]
-#     assert len(stack) == 1
-#     print(f"Stack after pops: {stack}")
-#
-#     # Empty pop
-#     stack.pop()
-#     try:
-#         stack.pop()
-#         print("ERROR: Should have raised IndexError")
-#     except IndexError:
-#         print("Empty pop raised IndexError (expected)")
-#
-#     try:
-#         stack.peek()
-#         print("ERROR: Should have raised IndexError")
-#     except IndexError:
-#         print("Empty peek raised IndexError (expected)")
-#     print("EXERCISE 6: PASSED")
+def test_money():
+    print("\n=== EXERCISE 1: Money ===")
+    m1 = Money(10.50, "USD")
+    m2 = Money(5.25, "USD")
+
+    assert repr(m1) == "Money(10.5, 'USD')"
+    assert str(m1) == "$10.50"
+    assert str(Money(10.50, "EUR")) == "10.50 EUR"
+
+    assert m1 + m2 == Money(15.75, "USD")
+    assert m1 - m2 == Money(5.25, "USD")
+    assert m1 > m2
+    assert m2 < m1
+    assert m1 == Money(10.50, "USD")
+    assert m1 != m2
+    print(f"{m1} + {m2} = {m1 + m2}")
+
+    # Hash works (can use in sets)
+    money_set = {m1, m2, Money(10.50, "USD")}
+    assert len(money_set) == 2
+    print(f"Set size: {len(money_set)} (expected 2)")
+
+    # Bool
+    assert bool(m1) is True
+    assert bool(Money(0)) is False
+
+    # Cross-currency errors
+    try:
+        Money(10, "USD") + Money(10, "EUR")
+        print("ERROR: Should have raised ValueError")
+    except ValueError:
+        print("Cross-currency add rejected (expected)")
+    print("EXERCISE 1: PASSED")
+
+
+def test_linked_list():
+    print("\n=== EXERCISE 2: Linked List ===")
+    ll = LinkedList()
+    ll.append(1)
+    ll.append(2)
+    ll.prepend(0)
+
+    assert list(ll) == [0, 1, 2]
+    assert len(ll) == 3
+    assert 1 in ll
+    assert 99 not in ll
+    print(f"List: {ll}")
+    print(f"Length: {len(ll)}, contains 1: {1 in ll}")
+
+    # Empty list
+    empty = LinkedList()
+    assert list(empty) == []
+    assert len(empty) == 0
+    print("Edge cases passed")
+    print("EXERCISE 2: PASSED")
+
+
+def test_registry():
+    print("\n=== EXERCISE 3: Registry ===")
+    registry.clear()  # reset for test
+
+    @register
+    class JsonParser:
+        kind = "json"
+        def parse(self, data): return f"json: {data}"
+
+    @register
+    class XmlParser:
+        kind = "xml"
+        def parse(self, data): return f"xml: {data}"
+
+    assert get_registered("JsonParser") is JsonParser
+    assert get_registered("XmlParser") is XmlParser
+    assert get_registered("Missing") is None
+    print(f"Registered: {list(registry.keys())}")
+    print("EXERCISE 3: PASSED")
+
+
+def test_immutable_config():
+    print("\n=== EXERCISE 4: Immutable Config ===")
+    config = ImmutableConfig({
+        "db": {"host": "localhost", "port": 5432},
+        "debug": True,
+    })
+
+    assert config.debug is True
+    assert config.db.host == "localhost"
+    assert config.db.port == 5432
+    print(f"config.db.host = {config.db.host}")
+
+    try:
+        config.debug = False
+        print("ERROR: Should have raised AttributeError")
+    except AttributeError:
+        print("Mutation blocked (expected)")
+
+    try:
+        del config.debug
+        print("ERROR: Should have raised AttributeError")
+    except AttributeError:
+        print("Deletion blocked (expected)")
+
+    try:
+        config.nonexistent
+        print("ERROR: Should have raised AttributeError")
+    except (AttributeError, KeyError):
+        print("Missing key raised error (expected)")
+    print("EXERCISE 4: PASSED")
+
+
+def test_observable():
+    print("\n=== EXERCISE 5: Observable ===")
+    obs = Observable()
+    log = []
+
+    def on_click(**data):
+        log.append(data)
+
+    obs.on("click", on_click)
+    obs.emit("click", x=10, y=20)
+    assert log == [{"x": 10, "y": 20}]
+    print(f"Event received: {log[-1]}")
+
+    obs.emit("click", x=30, y=40)
+    assert len(log) == 2
+
+    obs.off("click", on_click)
+    obs.emit("click", x=50, y=60)
+    assert len(log) == 2  # listener was removed
+    print(f"After off(): {len(log)} events (expected 2)")
+
+    # No error on emit with no listeners
+    obs.emit("nonexistent", foo="bar")
+    print("EXERCISE 5: PASSED")
+
+
+def test_generic_stack():
+    print("\n=== EXERCISE 6: Generic Stack ===")
+    stack: Stack[int] = Stack()
+    assert stack.is_empty()
+    assert len(stack) == 0
+
+    stack.push(1)
+    stack.push(2)
+    stack.push(3)
+
+    assert stack.peek() == 3
+    assert stack.pop() == 3
+    assert stack.pop() == 2
+    assert list(stack) == [1]
+    assert len(stack) == 1
+    print(f"Stack after pops: {stack}")
+
+    # Empty pop
+    stack.pop()
+    try:
+        stack.pop()
+        print("ERROR: Should have raised IndexError")
+    except IndexError:
+        print("Empty pop raised IndexError (expected)")
+
+    try:
+        stack.peek()
+        print("ERROR: Should have raised IndexError")
+    except IndexError:
+        print("Empty peek raised IndexError (expected)")
+    print("EXERCISE 6: PASSED")
 
 
 if __name__ == "__main__":
-    exercises = [
-        ("1 - Money Class", lambda: Money(10, "USD")),
-        ("2 - Linked List", lambda: LinkedList()),
-        ("3 - Registry Pattern", lambda: register(type("Test", (), {"kind": "test"}))),
-        ("4 - Immutable Config", lambda: ImmutableConfig({"a": 1})),
-        ("5 - Observable", lambda: Observable()),
-        ("6 - Generic Stack", lambda: Stack()),
+    print("Classes & Protocols Exercises")
+    print("=" * 60)
+
+    tests = [
+        ("Exercise 1: Money Class", test_money),
+        ("Exercise 2: Linked List", test_linked_list),
+        ("Exercise 3: Registry Pattern", test_registry),
+        ("Exercise 4: Immutable Config", test_immutable_config),
+        ("Exercise 5: Observable", test_observable),
+        ("Exercise 6: Generic Stack", test_generic_stack),
     ]
 
-    print("Classes & Protocols Exercises")
-    print("=" * 40)
-
-    for name, factory in exercises:
+    passed = 0
+    failed = 0
+    for name, test_fn in tests:
         try:
-            factory()
-            print(f"  {name}: IMPLEMENTED")
+            test_fn()
+            passed += 1
         except NotImplementedError:
-            print(f"  {name}: not implemented")
+            print(f"  {name}: NOT IMPLEMENTED")
+            failed += 1
+        except AssertionError as e:
+            print(f"  {name}: FAILED -- {e}")
+            failed += 1
+        except Exception as e:
+            print(f"  {name}: ERROR -- {type(e).__name__}: {e}")
+            failed += 1
 
-    # Uncomment below (and the test functions above) to run full tests:
-    # print()
-    # test_money()
-    # test_linked_list()
-    # test_registry()
-    # test_immutable_config()
-    # test_observable()
-    # test_generic_stack()
-    # print("\n=== ALL EXERCISES PASSED ===")
+    print()
+    print("=" * 60)
+    print(f"Results: {passed} passed, {failed} failed out of {len(tests)}")
+    print("=" * 60)
