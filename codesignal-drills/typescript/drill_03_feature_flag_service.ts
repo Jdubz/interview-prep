@@ -122,76 +122,97 @@ export class FeatureFlagService {
 
 // ─── Self-Checks (do not edit below this line) ──────────────────
 
+let _passed = 0;
+let _failed = 0;
+
 function check(label: string, actual: unknown, expected: unknown): void {
-  if (Object.is(actual, expected)) return;
   const a = JSON.stringify(actual);
   const e = JSON.stringify(expected);
-  if (a === e) return;
-  throw new Error(`${label}: expected ${e}, got ${a}`);
+  if (Object.is(actual, expected) || a === e) {
+    _passed++;
+    console.log(`  ✓ ${label}`);
+  } else {
+    _failed++;
+    console.log(`  ✗ ${label}`);
+    console.log(`    expected: ${e}`);
+    console.log(`         got: ${a}`);
+  }
+}
+
+function level(name: string, fn: () => void): void {
+  console.log(name);
+  try {
+    fn();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.startsWith("TODO:")) {
+      console.log(`  ○ ${msg}`);
+    } else {
+      _failed++;
+      console.log(`  ✗ ${msg}`);
+    }
+  }
 }
 
 function runSelfChecks(): void {
-  // ── Level 1 ──
-  const f1 = new FeatureFlagService();
-  check("L1 default off", f1.isEnabled("dark_mode"), false);
-  f1.enable("dark_mode");
-  check("L1 enabled", f1.isEnabled("dark_mode"), true);
-  f1.disable("dark_mode");
-  check("L1 disabled", f1.isEnabled("dark_mode"), false);
+  level("Level 1 — Global Flags", () => {
+    const f1 = new FeatureFlagService();
+    check("default off", f1.isEnabled("dark_mode"), false);
+    f1.enable("dark_mode");
+    check("enabled", f1.isEnabled("dark_mode"), true);
+    f1.disable("dark_mode");
+    check("disabled", f1.isEnabled("dark_mode"), false);
+  });
 
-  // ── Level 2 ──
-  const f2 = new FeatureFlagService();
-  f2.enable("new_ui");
-  f2.disableForUser("new_ui", "user1");
-  check("L2 user override off", f2.isEnabledForUser("new_ui", "user1"), false);
-  check("L2 fallback global", f2.isEnabledForUser("new_ui", "user2"), true);
-  f2.enableForUser("new_ui", "user1");
-  check("L2 user override on", f2.isEnabledForUser("new_ui", "user1"), true);
+  level("Level 2 — User Overrides", () => {
+    const f2 = new FeatureFlagService();
+    f2.enable("new_ui");
+    f2.disableForUser("new_ui", "user1");
+    check("user override off", f2.isEnabledForUser("new_ui", "user1"), false);
+    check("fallback global", f2.isEnabledForUser("new_ui", "user2"), true);
+    f2.enableForUser("new_ui", "user1");
+    check("user override on", f2.isEnabledForUser("new_ui", "user1"), true);
+  });
 
-  // ── Level 3 ──
-  const f3 = new FeatureFlagService();
-  f3.addUserToGroup("alice", "beta");
-  f3.addUserToGroup("alice", "staff");
-  f3.enableForGroup("experiment", "beta");
-  check("L3 group enabled", f3.isEnabledForUser("experiment", "alice"), true);
-  check("L3 not in group", f3.isEnabledForUser("experiment", "bob"), false);
-  f3.disableForUser("experiment", "alice");
-  check("L3 user beats group", f3.isEnabledForUser("experiment", "alice"), false);
+  level("Level 3 — Groups", () => {
+    const f3 = new FeatureFlagService();
+    f3.addUserToGroup("alice", "beta");
+    f3.addUserToGroup("alice", "staff");
+    f3.enableForGroup("experiment", "beta");
+    check("group enabled", f3.isEnabledForUser("experiment", "alice"), true);
+    check("not in group", f3.isEnabledForUser("experiment", "bob"), false);
+    f3.disableForUser("experiment", "alice");
+    check("user beats group", f3.isEnabledForUser("experiment", "alice"), false);
 
-  const f3b = new FeatureFlagService();
-  f3b.enable("feature_x");
-  f3b.addUserToGroup("carol", "internal");
-  f3b.disableForGroup("feature_x", "internal");
-  check("L3 group off beats global", f3b.isEnabledForUser("feature_x", "carol"), false);
-  check("L3 no group uses global", f3b.isEnabledForUser("feature_x", "dave"), true);
+    const f3b = new FeatureFlagService();
+    f3b.enable("feature_x");
+    f3b.addUserToGroup("carol", "internal");
+    f3b.disableForGroup("feature_x", "internal");
+    check("group off beats global", f3b.isEnabledForUser("feature_x", "carol"), false);
+    check("no group uses global", f3b.isEnabledForUser("feature_x", "dave"), true);
+  });
 
-  // ── Level 4 ──
-  const f4 = new FeatureFlagService();
-  f4.enable("flag_a");
-  f4.enable("flag_b");
-  f4.snapshot("v1");
-  f4.disable("flag_a");
-  check("L4 after disable", f4.isEnabled("flag_a"), false);
-  check("L4 restore", f4.restore("v1"), true);
-  check("L4 restored", f4.isEnabled("flag_a"), true);
-  check("L4 other flag", f4.isEnabled("flag_b"), true);
-  check("L4 missing snapshot", f4.restore("nope"), false);
-  check("L4 list", f4.listSnapshots(), ["v1"]);
+  level("Level 4 — Snapshots", () => {
+    const f4 = new FeatureFlagService();
+    f4.enable("flag_a");
+    f4.enable("flag_b");
+    f4.snapshot("v1");
+    f4.disable("flag_a");
+    check("after disable", f4.isEnabled("flag_a"), false);
+    check("restore", f4.restore("v1"), true);
+    check("restored", f4.isEnabled("flag_a"), true);
+    check("other flag", f4.isEnabled("flag_b"), true);
+    check("missing snapshot", f4.restore("nope"), false);
+    check("list", f4.listSnapshots(), ["v1"]);
+  });
 }
 
 function main(): void {
-  try {
-    runSelfChecks();
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    if (msg.startsWith("TODO:")) {
-      console.log(msg);
-      return;
-    }
-    console.log(`FAIL: ${msg}`);
-    return;
-  }
-  console.log("All self-checks passed.");
+  console.log("\nFeature Flag Service\n");
+  runSelfChecks();
+  const total = _passed + _failed;
+  console.log(`\n${_passed}/${total} passed`);
+  if (_failed === 0 && total > 0) console.log("All tests passed.");
 }
 
 main();

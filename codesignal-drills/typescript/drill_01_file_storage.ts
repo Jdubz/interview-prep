@@ -50,20 +50,34 @@ Level 4 — Undo
 */
 
 export class FileStorage {
+  capacity: number | null;
+  fileStore: Map<string, number>;
+
   constructor(capacity?: number) {
-    // TODO: initialize your data structures
+    this.capacity = capacity || null
+    this.fileStore = new Map();
   }
 
   addFile(name: string, size: number): boolean {
-    throw new Error("TODO: implement addFile");
+    const existingFile = this.fileStore.get(name);
+    if (existingFile) return false;
+    this.fileStore.set(name, size);
+    return true;
   }
 
   getFileSize(name: string): number {
-    throw new Error("TODO: implement getFileSize");
+    const existingFile = this.fileStore.get(name);
+    if (existingFile) return existingFile;
+    return -1;
   }
 
   deleteFile(name: string): boolean {
-    throw new Error("TODO: implement deleteFile");
+    const existingFile = this.fileStore.get(name);
+    if (existingFile) {
+      this.fileStore.delete(name);
+      return true;
+    }
+    return false;
   }
 
   copyFile(source: string, dest: string): boolean {
@@ -89,81 +103,102 @@ export class FileStorage {
 
 // ─── Self-Checks (do not edit below this line) ──────────────────
 
+let _passed = 0;
+let _failed = 0;
+
 function check(label: string, actual: unknown, expected: unknown): void {
-  if (Object.is(actual, expected)) return;
   const a = JSON.stringify(actual);
   const e = JSON.stringify(expected);
-  if (a === e) return;
-  throw new Error(`${label}: expected ${e}, got ${a}`);
+  if (Object.is(actual, expected) || a === e) {
+    _passed++;
+    console.log(`  ✓ ${label}`);
+  } else {
+    _failed++;
+    console.log(`  ✗ ${label}`);
+    console.log(`    expected: ${e}`);
+    console.log(`         got: ${a}`);
+  }
+}
+
+function level(name: string, fn: () => void): void {
+  console.log(name);
+  try {
+    fn();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.startsWith("TODO:")) {
+      console.log(`  ○ ${msg}`);
+    } else {
+      _failed++;
+      console.log(`  ✗ ${msg}`);
+    }
+  }
 }
 
 function runSelfChecks(): void {
-  // ── Level 1 ──
-  const s1 = new FileStorage();
-  check("L1 add new", s1.addFile("a.txt", 100), true);
-  check("L1 add dup", s1.addFile("a.txt", 999), false);
-  check("L1 get exists", s1.getFileSize("a.txt"), 100);
-  check("L1 get missing", s1.getFileSize("z.txt"), -1);
-  check("L1 delete exists", s1.deleteFile("a.txt"), true);
-  check("L1 delete missing", s1.deleteFile("a.txt"), false);
-  check("L1 get after delete", s1.getFileSize("a.txt"), -1);
+  level("Level 1 — Basic Operations", () => {
+    const s1 = new FileStorage();
+    check("add new", s1.addFile("a.txt", 100), true);
+    check("add dup", s1.addFile("a.txt", 999), false);
+    check("get exists", s1.getFileSize("a.txt"), 100);
+    check("get missing", s1.getFileSize("z.txt"), -1);
+    check("delete exists", s1.deleteFile("a.txt"), true);
+    check("delete missing", s1.deleteFile("a.txt"), false);
+    check("get after delete", s1.getFileSize("a.txt"), -1);
+  });
 
-  // ── Level 2 ──
-  const s2 = new FileStorage();
-  s2.addFile("app.js", 300);
-  s2.addFile("api.js", 300);
-  s2.addFile("assets.zip", 100);
-  s2.addFile("readme.md", 50);
-  check("L2 copy ok", s2.copyFile("app.js", "app_backup.js"), true);
-  check("L2 copy missing", s2.copyFile("nope.txt", "x.txt"), false);
-  check("L2 search", s2.search("a"),
-    ["api.js", "app.js", "app_backup.js", "assets.zip"]);
-  check("L2 search no match", s2.search("zzz"), []);
+  level("Level 2 — Copy & Search", () => {
+    const s2 = new FileStorage();
+    s2.addFile("app.js", 300);
+    s2.addFile("api.js", 300);
+    s2.addFile("assets.zip", 100);
+    s2.addFile("readme.md", 50);
+    check("copy ok", s2.copyFile("app.js", "app_backup.js"), true);
+    check("copy missing", s2.copyFile("nope.txt", "x.txt"), false);
+    check("search", s2.search("a"),
+      ["api.js", "app.js", "app_backup.js", "assets.zip"]);
+    check("search no match", s2.search("zzz"), []);
+  });
 
-  // ── Level 3 ──
-  const s3 = new FileStorage(500);
-  check("L3 add within", s3.addFile("a.txt", 200), true);
-  check("L3 add within 2", s3.addFile("b.txt", 200), true);
-  check("L3 add exceeds", s3.addFile("c.txt", 200), false);
-  check("L3 used", s3.getUsedSpace(), 400);
-  check("L3 remaining", s3.getRemainingSpace(), 100);
-  const s3b = new FileStorage();
-  s3b.addFile("x.txt", 1000);
-  check("L3 no limit remaining", s3b.getRemainingSpace(), Infinity);
+  level("Level 3 — Capacity", () => {
+    const s3 = new FileStorage(500);
+    check("add within", s3.addFile("a.txt", 200), true);
+    check("add within 2", s3.addFile("b.txt", 200), true);
+    check("add exceeds", s3.addFile("c.txt", 200), false);
+    check("used", s3.getUsedSpace(), 400);
+    check("remaining", s3.getRemainingSpace(), 100);
+    const s3b = new FileStorage();
+    s3b.addFile("x.txt", 1000);
+    check("no limit remaining", s3b.getRemainingSpace(), Infinity);
+  });
 
-  // ── Level 4 ──
-  const s4 = new FileStorage();
-  s4.addFile("file.txt", 100);
-  s4.deleteFile("file.txt");
-  check("L4 after delete", s4.getFileSize("file.txt"), -1);
-  check("L4 undo delete", s4.undo(), true);
-  check("L4 restored", s4.getFileSize("file.txt"), 100);
-  check("L4 undo add", s4.undo(), true);
-  check("L4 fully undone", s4.getFileSize("file.txt"), -1);
-  check("L4 nothing left", s4.undo(), false);
+  level("Level 4 — Undo", () => {
+    const s4 = new FileStorage();
+    s4.addFile("file.txt", 100);
+    s4.deleteFile("file.txt");
+    check("after delete", s4.getFileSize("file.txt"), -1);
+    check("undo delete", s4.undo(), true);
+    check("restored", s4.getFileSize("file.txt"), 100);
+    check("undo add", s4.undo(), true);
+    check("fully undone", s4.getFileSize("file.txt"), -1);
+    check("nothing left", s4.undo(), false);
 
-  const s4b = new FileStorage();
-  s4b.addFile("src.txt", 200);
-  s4b.copyFile("src.txt", "dst.txt");
-  check("L4 copy created", s4b.getFileSize("dst.txt"), 200);
-  check("L4 undo copy", s4b.undo(), true);
-  check("L4 copy undone", s4b.getFileSize("dst.txt"), -1);
-  check("L4 src intact", s4b.getFileSize("src.txt"), 200);
+    const s4b = new FileStorage();
+    s4b.addFile("src.txt", 200);
+    s4b.copyFile("src.txt", "dst.txt");
+    check("copy created", s4b.getFileSize("dst.txt"), 200);
+    check("undo copy", s4b.undo(), true);
+    check("copy undone", s4b.getFileSize("dst.txt"), -1);
+    check("src intact", s4b.getFileSize("src.txt"), 200);
+  });
 }
 
 function main(): void {
-  try {
-    runSelfChecks();
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    if (msg.startsWith("TODO:")) {
-      console.log(msg);
-      return;
-    }
-    console.log(`FAIL: ${msg}`);
-    return;
-  }
-  console.log("All self-checks passed.");
+  console.log("\nFile Storage\n");
+  runSelfChecks();
+  const total = _passed + _failed;
+  console.log(`\n${_passed}/${total} passed`);
+  if (_failed === 0 && total > 0) console.log("All tests passed.");
 }
 
 main();
