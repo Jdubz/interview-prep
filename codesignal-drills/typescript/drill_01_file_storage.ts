@@ -52,15 +52,20 @@ Level 4 — Undo
 export class FileStorage {
   capacity: number | null;
   fileStore: Map<string, number>;
+  history: Map<string, number>[]
 
   constructor(capacity?: number) {
     this.capacity = capacity || null
     this.fileStore = new Map();
+    this.history = [];
   }
 
   addFile(name: string, size: number): boolean {
+    const remainingSpace = this.getRemainingSpace();
+    if (remainingSpace < size) return false;
     const existingFile = this.fileStore.get(name);
     if (existingFile) return false;
+    this.history.push(new Map(this.fileStore));
     this.fileStore.set(name, size);
     return true;
   }
@@ -74,6 +79,7 @@ export class FileStorage {
   deleteFile(name: string): boolean {
     const existingFile = this.fileStore.get(name);
     if (existingFile) {
+      this.history.push(new Map(this.fileStore));
       this.fileStore.delete(name);
       return true;
     }
@@ -81,23 +87,42 @@ export class FileStorage {
   }
 
   copyFile(source: string, dest: string): boolean {
-    throw new Error("TODO: implement copyFile");
+    const existingFile = this.fileStore.get(source);
+    if (!existingFile) return false;
+    const remainingSpace = this.getRemainingSpace();
+    const destFileSize = this.getFileSize(dest);
+    const sourceFileSize = this.getFileSize(source);
+    if (destFileSize > 0 && sourceFileSize - destFileSize > remainingSpace) return false;
+    if (destFileSize === -1 && sourceFileSize > remainingSpace) return false;
+    this.history.push(new Map(this.fileStore));
+    this.fileStore.set(dest, existingFile);
+    return true;
   }
 
   search(prefix: string): string[] {
-    throw new Error("TODO: implement search");
+    const allFiles = this.fileStore.entries();
+    const matchFiles = Array.from(allFiles).filter(([fileName]) => fileName.startsWith(prefix));
+    matchFiles.sort(([fileNameA, fileSizeA], [fileNameB, fileSizeB]) => fileSizeA === fileSizeB ? fileNameA > fileNameB ? 1 : -1 : fileSizeB - fileSizeA);
+
+    return matchFiles.map(([fileName]) => fileName);
   }
 
   getUsedSpace(): number {
-    throw new Error("TODO: implement getUsedSpace");
+    let usedSpace = 0;
+    this.fileStore.forEach(v => usedSpace += v);
+    return usedSpace;
   }
 
   getRemainingSpace(): number {
-    throw new Error("TODO: implement getRemainingSpace");
+    if (!this.capacity) return Infinity;
+    const usedSpace = this.getUsedSpace();
+    return this.capacity - usedSpace;
   }
 
   undo(): boolean {
-    throw new Error("TODO: implement undo");
+    if (!this.history.length) return false;
+    this.fileStore = this.history.pop()!;
+    return true;
   }
 }
 
