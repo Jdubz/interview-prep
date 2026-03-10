@@ -18,6 +18,9 @@ Each drill gives you a class to implement with methods that build on each other 
 | 01 | **FileStorage** | Hash maps, sorting, capacity constraints, undo stack |
 | 02 | **KeyValueStore** | CRUD, prefix scanning, nested transactions, history |
 | 03 | **FeatureFlagService** | Layered state resolution, group membership, snapshots |
+| 04 | **TaskScheduler** | Priority ordering, tag indexing, dependency graphs, completion history |
+| 05 | **Leaderboard** | Ranking, sorted queries, team aggregation, score history |
+| 06 | **InventoryTracker** | Stock constraints, category indexing, threshold alerts, change history |
 
 ## Level structure
 
@@ -45,6 +48,9 @@ typescript/
   drill_01_file_storage.ts
   drill_02_key_value_store.ts
   drill_03_feature_flag_service.ts
+  drill_04_task_scheduler.ts
+  drill_05_leaderboard.ts
+  drill_06_inventory_tracker.ts
 python/
   drill_01_file_storage.py
   drill_02_key_value_store.py
@@ -62,6 +68,9 @@ Do not edit the self-check harness at the bottom of each file.
 - `drill_01_file_storage.ts` — implement `FileStorage` class
 - `drill_02_key_value_store.ts` — implement `KeyValueStore` class
 - `drill_03_feature_flag_service.ts` — implement `FeatureFlagService` class
+- `drill_04_task_scheduler.ts` — implement `TaskScheduler` class
+- `drill_05_leaderboard.ts` — implement `Leaderboard` class
+- `drill_06_inventory_tracker.ts` — implement `InventoryTracker` class
 
 **Python:**
 - `drill_01_file_storage.py` — implement `FileStorage` class
@@ -75,6 +84,9 @@ Do not edit the self-check harness at the bottom of each file.
 npx tsx codesignal-drills/typescript/drill_01_file_storage.ts
 npx tsx codesignal-drills/typescript/drill_02_key_value_store.ts
 npx tsx codesignal-drills/typescript/drill_03_feature_flag_service.ts
+npx tsx codesignal-drills/typescript/drill_04_task_scheduler.ts
+npx tsx codesignal-drills/typescript/drill_05_leaderboard.ts
+npx tsx codesignal-drills/typescript/drill_06_inventory_tracker.ts
 
 # Python
 python3 codesignal-drills/python/drill_01_file_storage.py

@@ -67,52 +67,83 @@ Level 4 — History
 */
 
 export class KeyValueStore {
+  dataStore: Map<string, string>;
+  snapshots: [Map<string, string>, Map<string, string[]>][];
+  history: Map<string, string[]>;
+
   constructor() {
-    // TODO: initialize your data structures
+    this.dataStore = new Map();
+    this.snapshots = [];
+    this.history = new Map();
   }
 
   set(key: string, value: string): void {
-    throw new Error("TODO: implement set");
+    this.dataStore.set(key, value);
+    const history = this.history.get(key) || [];
+    history.push(value);
+    this.history.set(key, history);
   }
 
   get(key: string): string | null {
-    throw new Error("TODO: implement get");
+    return this.dataStore.get(key) || null;
   }
 
   delete(key: string): boolean {
-    throw new Error("TODO: implement delete");
+    return this.dataStore.delete(key);
   }
 
   count(value: string): number {
-    throw new Error("TODO: implement count");
+    const values = Array.from(this.dataStore.values());
+    const count = values.reduce((currentCount, item) => item === value ? currentCount + 1 : currentCount, 0)
+    return count;
   }
 
   keys(): string[] {
-    throw new Error("TODO: implement keys");
+    const allKeys = Array.from(this.dataStore.keys());
+    const sortedKeys = allKeys.sort((a,b) => a > b ? 1 : -1);
+    return sortedKeys;
   }
 
   prefix(p: string): string[] {
-    throw new Error("TODO: implement prefix");
+    const sortedKeys = this.keys();
+    return sortedKeys.filter((key) => key.startsWith(p));
   }
 
   begin(): void {
-    throw new Error("TODO: implement begin");
+    this.snapshots.push([new Map(this.dataStore), structuredClone(this.history)]);
   }
 
   commit(): boolean {
-    throw new Error("TODO: implement commit");
+    if (!this.snapshots.length) return false;
+    this.snapshots.pop();
+    return true;
   }
 
   rollback(): boolean {
-    throw new Error("TODO: implement rollback");
+    if (!this.snapshots.length) return false;
+    const [dataStore, history] = this.snapshots.pop()!;
+    this.dataStore = dataStore;
+    this.history = history;
+    return true;
   }
 
   getHistory(key: string): string[] {
-    throw new Error("TODO: implement getHistory");
+    const history = this.history.get(key) || [];
+    return history;
   }
 
   undoSet(key: string): boolean {
-    throw new Error("TODO: implement undoSet");
+    const history = this.history.get(key) || [];
+    if (!history.length) return false;
+    history.pop()!
+    this.history.set(key, history);
+    const newVal = history[history.length - 1]
+    if (newVal === undefined) {
+      this.dataStore.delete(key);
+    } else {
+      this.dataStore.set(key, newVal);
+    }
+    return true;
   }
 }
 

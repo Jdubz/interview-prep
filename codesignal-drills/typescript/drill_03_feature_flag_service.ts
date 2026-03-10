@@ -66,57 +66,131 @@ Level 4 — Snapshots
     Returns all snapshot names, sorted alphabetically.
 */
 
+type Snapshot = {
+  flags: Map<string, boolean>;
+  users: Map<string, Map<string, boolean>>;
+  userGroups: Map<string, Set<string>>;
+  groupFlags: Map<string, Map<string, boolean>>;
+}
+
 export class FeatureFlagService {
+  flags: Map<string, boolean>;
+  users: Map<string, Map<string, boolean>>;
+  userGroups: Map<string, Set<string>>;
+  groupFlags: Map<string, Map<string, boolean>>;
+  snapshots: Map<string, Snapshot>;
+
   constructor() {
-    // TODO: initialize your data structures
+    this.flags = new Map();
+    this.users = new Map();
+    this.userGroups = new Map();
+    this.groupFlags = new Map();
+    this.snapshots = new Map();
   }
 
   enable(flag: string): void {
-    throw new Error("TODO: implement enable");
+    this.flags.set(flag, true);
   }
 
   disable(flag: string): void {
-    throw new Error("TODO: implement disable");
+    this.flags.set(flag, false);
   }
 
   isEnabled(flag: string): boolean {
-    throw new Error("TODO: implement isEnabled");
+    return !!this.flags.get(flag);
   }
 
   enableForUser(flag: string, userId: string): void {
-    throw new Error("TODO: implement enableForUser");
+    let user = this.users.get(userId);
+    if (!user) {
+      user = new Map(); 
+    }
+    user.set(flag, true);
+    this.users.set(userId, user);
   }
 
   disableForUser(flag: string, userId: string): void {
-    throw new Error("TODO: implement disableForUser");
+    let user = this.users.get(userId);
+    if (!user) {
+      user = new Map(); 
+    }
+    user.set(flag, false);
+    this.users.set(userId, user);
   }
 
   isEnabledForUser(flag: string, userId: string): boolean {
-    throw new Error("TODO: implement isEnabledForUser");
+    const user = this.users.get(userId);
+    if (user && user.has(flag)) {
+      return user.get(flag)!;
+    }
+
+    const userGroups = Array.from(this.userGroups.entries()).filter(([_, users]) => users.has(userId));
+    const groupEnabled = userGroups.reduce<(boolean)[]>((accum, [group]) => {
+      const enabled = this.groupFlags.get(group)?.get(flag);
+      return enabled !== undefined ? [...accum, enabled] : accum;
+;    }, []);
+
+    return groupEnabled.length ? groupEnabled.some((enabled: boolean) => enabled) : this.isEnabled(flag)
   }
+  // Alternative: replace the reduce with filter + map
+  //
+  // const groupSettings = userGroups
+  //   .map(([group]) => this.groupFlags.get(group)?.get(flag))
+  //   .filter((v): v is boolean => v !== undefined);
+  //
+  // return groupSettings.length ? groupSettings.some(Boolean) : this.isEnabled(flag);
 
   addUserToGroup(userId: string, group: string): void {
-    throw new Error("TODO: implement addUserToGroup");
+    let userGroup = this.userGroups.get(group);
+    if (!userGroup) {
+      userGroup = new Set();
+    }
+    userGroup.add(userId);
+    this.userGroups.set(group, userGroup);
   }
 
   enableForGroup(flag: string, group: string): void {
-    throw new Error("TODO: implement enableForGroup");
+    let groupFlags = this.groupFlags.get(group);
+    if (!groupFlags) {
+      groupFlags = new Map();
+    }
+    groupFlags.set(flag, true);
+    this.groupFlags.set(group, groupFlags);
   }
 
   disableForGroup(flag: string, group: string): void {
-    throw new Error("TODO: implement disableForGroup");
+    let groupFlags = this.groupFlags.get(group);
+    if (!groupFlags) {
+      groupFlags = new Map();
+    }
+    groupFlags.set(flag, false);
+    this.groupFlags.set(group, groupFlags);
   }
 
   snapshot(name: string): void {
-    throw new Error("TODO: implement snapshot");
+    this.snapshots.set(name, {
+      flags: structuredClone(this.flags),
+      users: structuredClone(this.users),
+      userGroups: structuredClone(this.userGroups),
+      groupFlags: structuredClone(this.groupFlags),
+    });
   }
 
   restore(name: string): boolean {
-    throw new Error("TODO: implement restore");
+    const snapshot = this.snapshots.get(name);
+    if (!snapshot) return false
+    this.flags = snapshot.flags;
+    this.users = snapshot.users;
+    this.userGroups = snapshot.userGroups;
+    this.groupFlags = snapshot.groupFlags;
+    // these should clone, any future state changes will corrupt the snapshot
+    return true;
   }
 
   listSnapshots(): string[] {
-    throw new Error("TODO: implement listSnapshots");
+    const names = Array.from(this.snapshots.keys());
+    names.sort((a,b) => a > b ? 1 : -1);
+    return names;
   }
 }
 
