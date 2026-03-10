@@ -20,6 +20,7 @@ System design, infrastructure, and scaling patterns for senior engineers. Covers
 
 1. [System Design Framework Essentials](01-system-design-framework/01-system-design-framework-essentials.md) — Structured approach, requirements gathering, back-of-the-envelope estimation, communication strategies, common pitfalls
 2. [Advanced System Design](01-system-design-framework/02-advanced-system-design.md) — Deep dives into advanced trade-offs, distributed system patterns, and staff-level interview expectations
+3. [High-Volume Scaling Experience](01-system-design-framework/03-high-volume-scaling-experience.md) — Production failure patterns (hot partitions, thundering herd, N+1, fan-out, connection exhaustion), the scaling progression, how to speak from experience, estimation-driven design, and 15 scenario-based quiz questions
 
 ### 02 — Databases at Scale
 
