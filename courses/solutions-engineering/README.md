@@ -48,6 +48,11 @@ How to excel in client-facing technical roles and what to know for SE/FDE interv
 - [02 – Mock Scenarios and System Design](./07-interview-preparation/02-mock-scenarios-and-system-design.md) — 3 mock discovery calls with rubrics, SE system design framework, 3 design walkthroughs, demo prep
 - [03 – Take-Home POCs and Behavioral Prep](./07-interview-preparation/03-take-home-pocs-and-behavioral-prep.md) — POC submission excellence, 2 practice projects, timed exercises, STAR+I story bank
 
+### 08 — Okta / Auth0 SE Interview Prep
+- [01 – Okta Platform and Product Knowledge](./08-okta-auth0-se-prep/01-okta-platform-and-product-knowledge.md) — Workforce vs Customer Identity, Auth0 architecture, IAM protocols (OAuth 2.0, OIDC, SAML, SCIM, WebAuthn), key product capabilities, competitive landscape, compliance certifications
+- [02 – SE Discovery, Demos, and Positioning](./08-okta-auth0-se-prep/02-se-discovery-demos-and-positioning.md) — identity-specific discovery question banks, pain qualification framework, Workforce and Auth0 demo narrative arcs, objection handling, POC design, technical architecture conversations
+- [03 – Hiring Manager Interview Prep](./08-okta-auth0-se-prep/03-hiring-manager-interview-prep.md) — HM evaluation dimensions, prepared answers to every common question, background positioning, research checklist, questions to ask, full loop overview
+
 ---
 
 ## Content Per Module
@@ -69,4 +74,4 @@ Each module directory contains numbered files organized by topic:
 - For AI/ML-specific content (Module 06), prior reading of the [LLM Engineering course](../llms/README.md) is helpful but not required
 
 ## Status
-**Content complete** — all modules written with exercises, examples, and full interview prep.
+**Content complete** — all modules written with exercises, examples, and full interview prep. Module 08 added for Okta/Auth0 SE role-specific preparation.
