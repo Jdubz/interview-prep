@@ -1,6 +1,6 @@
 # 01 -- Okta Platform and Product Knowledge
 
-You cannot win an SE interview at Okta without deep, fluent product knowledge. This is not a generic IAM concepts review. This is the exact knowledge you need to speak credibly about Okta's platform on day one of an interview loop — from the product architecture, through the key protocols, to how the two product lines (Workforce Identity and Customer Identity) differ and when each applies.
+You cannot win an SE interview at Okta without deep, fluent product knowledge. This is not a generic IAM (Identity and Access Management) concepts review. This is the exact knowledge you need to speak credibly about Okta's platform on day one of an interview loop — from the product architecture, through the key protocols, to how the two product lines (Workforce Identity and Customer Identity) differ and when each applies.
 
 ---
 
@@ -12,20 +12,20 @@ Okta acquired Auth0 in May 2021 for $6.5B. The two brands still exist and serve 
 
 | Product | Brand | Primary Buyer | Core Problem Solved |
 |---------|-------|---------------|---------------------|
-| **Okta Workforce Identity Cloud** | Okta | IT, Security, HR | Employee SSO, lifecycle management, zero trust for internal apps and infrastructure |
-| **Okta Customer Identity Cloud (CIC)** | Auth0 (powered by Auth0) | App developers, product teams | Customer-facing authentication — login, registration, MFA, social login — embedded into a product |
+| **Okta Workforce Identity Cloud** | Okta | IT, Security, HR | Employee SSO (Single Sign-On), lifecycle management, zero trust for internal apps and infrastructure |
+| **Okta Customer Identity Cloud (CIC)** | Auth0 (powered by Auth0) | App developers, product teams | Customer-facing authentication — login, registration, MFA (Multi-Factor Authentication), social login — embedded into a product |
 | **Okta Identity Governance (OIG)** | Okta | IAM teams, compliance | Access requests, certifications, entitlement management, separation of duties |
-| **Okta Privileged Access** | Okta | Security, DevSecOps | Privileged account management, SSH/RDP access, just-in-time admin elevation |
+| **Okta Privileged Access** | Okta | Security, DevSecOps (Development, Security, and Operations) | Privileged account management, SSH (Secure Shell)/RDP (Remote Desktop Protocol) access, just-in-time admin elevation |
 
 **The one-sentence distinction:** Workforce is for your employees accessing company apps. Customer Identity (Auth0) is for your customers logging into your product.
 
 ### Who Buys Which
 
-- **CISO/IT Director** → Workforce Identity. Cares about SSO, MFA enforcement, phishing-resistant auth, lifecycle management (join/move/leave), compliance reporting.
-- **CTO/VP Engineering** → Customer Identity (Auth0). Cares about auth developer experience, login UX, SDK quality, CIAM at scale, B2B multi-tenancy.
+- **CISO (Chief Information Security Officer)/IT Director** → Workforce Identity. Cares about SSO, MFA enforcement, phishing-resistant auth, lifecycle management (join/move/leave), compliance reporting.
+- **CTO (Chief Technology Officer)/VP Engineering** → Customer Identity (Auth0). Cares about auth developer experience, login UX (User Experience), SDK (Software Development Kit) quality, CIAM (Customer Identity and Access Management) at scale, B2B (Business-to-Business) multi-tenancy.
 - **Product Manager** → Customer Identity. Cares about sign-up conversion, social login, passwordless UX.
 - **IAM Team** → Both. Workforce for internal, may also own CIC if the company builds customer-facing products.
-- **Compliance/GRC** → Workforce + OIG. Cares about access reviews, policy enforcement, audit trails.
+- **Compliance/GRC (Governance, Risk, and Compliance)** → Workforce + OIG. Cares about access reviews, policy enforcement, audit trails.
 
 ---
 
@@ -33,13 +33,13 @@ Okta acquired Auth0 in May 2021 for $6.5B. The two brands still exist and serve 
 
 You must be able to explain these clearly to both technical and non-technical audiences. Know the difference, know when each applies, and know where Okta/Auth0 supports each.
 
-### OAuth 2.0
+### OAuth 2.0 (Open Authorization)
 
 An authorization framework. It answers: **"What can this application do on behalf of this user?"**
 
 - Grants an application an **access token** scoped to specific permissions (scopes)
 - Does **not** tell you who the user is — that is OIDC's job
-- Flows: Authorization Code (web apps), Authorization Code + PKCE (SPAs, mobile), Client Credentials (machine-to-machine), Device Code (TV/CLI flows)
+- Flows: Authorization Code (web apps), Authorization Code + PKCE (Proof Key for Code Exchange) (SPAs (Single Page Applications), mobile), Client Credentials (machine-to-machine), Device Code (TV/CLI (Command Line Interface) flows)
 - Okta acts as the Authorization Server. Client apps redirect to Okta, user authenticates, Okta issues tokens.
 
 **The PKCE explanation for non-technical stakeholders:** "PKCE is like a secret handshake that a mobile app sets up before it asks for a token, so even if someone intercepts the exchange, they cannot use it. It is how we secure OAuth for apps that cannot store a client secret safely."
@@ -48,7 +48,7 @@ An authorization framework. It answers: **"What can this application do on behal
 
 An identity layer on top of OAuth 2.0. It answers: **"Who is this user?"**
 
-- Adds an **ID token** (JWT) containing user identity claims (`sub`, `email`, `name`, `groups`)
+- Adds an **ID token** (JWT (JSON Web Token)) containing user identity claims (`sub`, `email`, `name`, `groups`)
 - Adds the `/userinfo` endpoint for fetching additional claims
 - Is the modern standard for SSO in web and mobile apps
 - Okta fully supports OIDC as an Identity Provider (IdP)
@@ -58,12 +58,12 @@ An identity layer on top of OAuth 2.0. It answers: **"Who is this user?"**
 - **Access Token** — authorization grant, sent to resource servers (APIs). Okta access tokens can be opaque or JWT format.
 - **Refresh Token** — long-lived token used to get new access tokens without re-authentication.
 
-### SAML 2.0
+### SAML 2.0 (Security Assertion Markup Language)
 
 An XML-based federation protocol. Answers: **"I know who this user is, here is an assertion."**
 
 - Still dominant in enterprise SSO for legacy apps and business applications (Salesforce, Workday, ServiceNow, etc.)
-- IdP-initiated vs SP-initiated flows matter for customer conversations
+- IdP-initiated vs SP (Service Provider)-initiated flows matter for customer conversations
 - Okta was built on SAML — it has the most robust SAML SP and IdP support in the market
 - Auth0/CIC also supports SAML but is more commonly used with OIDC
 
@@ -75,7 +75,7 @@ An XML-based federation protocol. Answers: **"I know who this user is, here is a
 
 Protocol for automated user provisioning and deprovisioning between systems.
 
-- SCIM 2.0 is the standard. REST-based, JSON payloads.
+- SCIM 2.0 is the standard. REST (Representational State Transfer)-based, JSON (JavaScript Object Notation) payloads.
 - Enables: creating users automatically in downstream apps when onboarded, updating attributes, deprovisioning access when offboarded
 - Okta is the SCIM Client (pushes changes) when provisioning to apps like Salesforce, Slack, GitHub
 - Okta can also be a SCIM Server (receives pushes) from HR systems like Workday or BambooHR
@@ -86,7 +86,7 @@ Protocol for automated user provisioning and deprovisioning between systems.
 
 The modern phishing-resistant authenticator standard.
 
-- W3C standard backed by FIDO2. Replaces passwords and TOTP with public-key cryptography.
+- W3C (World Wide Web Consortium) standard backed by FIDO2 (Fast Identity Online 2). Replaces passwords and TOTP (Time-based One-Time Password) with public-key cryptography.
 - User registers a credential (biometric, hardware key) bound to the origin (domain). Phishing is impossible because credentials are domain-bound.
 - Okta FastPass + Okta Verify implement passkey-grade authentication for workforce
 - Auth0/CIC supports passkeys for customer-facing apps
@@ -98,16 +98,16 @@ The modern phishing-resistant authenticator standard.
 
 ### Universal Directory
 
-Okta's cloud-hosted LDAP/user store. The central source of truth for identity.
+Okta's cloud-hosted LDAP (Lightweight Directory Access Protocol)/user store. The central source of truth for identity.
 
-- Can act as a standalone directory (replacing AD for cloud-first orgs) or as a profile master / aggregator above AD, LDAP, HR systems
+- Can act as a standalone directory (replacing AD (Active Directory) for cloud-first orgs) or as a profile master / aggregator above AD, LDAP, HR systems
 - Supports custom attributes, group management, profile sourcing from multiple systems
 - **Discovery signal:** "We have five different user stores that don't sync." → Universal Directory + profile mastering conversation.
 
 ### Single Sign-On (SSO)
 
 - The Okta Integration Network (OIN) has 7,000+ pre-built integrations — every major SaaS app has a connector
-- SAML and OIDC integrations; Okta also supports Bookmark Apps, SWA (Secure Web Auth / form-fill as last resort), and WS-Federation
+- SAML and OIDC integrations; Okta also supports Bookmark Apps, SWA (Secure Web Authentication / form-fill as last resort), and WS-Federation (Web Services Federation)
 - The "Application Network" differentiates Okta from competitors who have fewer pre-built integrations
 
 ### Lifecycle Management (LCM)
@@ -118,7 +118,7 @@ Okta's cloud-hosted LDAP/user store. The central source of truth for identity.
 
 ### Adaptive Multi-Factor Authentication
 
-- Okta Verify (push, TOTP, FastPass), SMS, email OTP, hardware tokens (YubiKey/FIDO2), WebAuthn
+- Okta Verify (push, TOTP, FastPass), SMS, email OTP (One-Time Password), hardware tokens (YubiKey/FIDO2), WebAuthn
 - Adaptive policies: step-up based on risk signals — new device, new location, anomalous behavior, ThreatInsight risk score
 - **Policy engine:** Authentication Policies with rules combining user context, device context, network zone, and risk
 
@@ -134,11 +134,11 @@ Okta's cloud-hosted LDAP/user store. The central source of truth for identity.
 - Access Request: users self-request access, approval workflows route to managers or resource owners
 - Access Certification: periodic entitlement reviews ("certifications") where managers confirm access is still appropriate
 - Identity Lifecycle policies tied to governance
-- **Buyer:** Compliance teams, auditors, companies dealing with SOX, HIPAA, SOC2
+- **Buyer:** Compliance teams, auditors, companies dealing with SOX (Sarbanes-Oxley Act), HIPAA (Health Insurance Portability and Accountability Act), SOC 2 (System and Organization Controls 2)
 
 ### Zero Trust and Device Trust
 
-- Okta Device Trust: requires device to be managed (enrolled in MDM like Jamf or Intune) before granting access
+- Okta Device Trust: requires device to be managed (enrolled in MDM (Mobile Device Management) like Jamf or Intune) before granting access
 - FastPass: passwordless, device-bound credential. No password prompt, just biometric on managed device.
 - Network zones: allow/deny access from known IP ranges or anonymous proxies
 - **Zero trust positioning:** "Never trust, always verify" — Okta evaluates every access request against user, device, location, and behavior signals before granting access.
@@ -183,13 +183,13 @@ Auth0's term for identity sources — where users come from.
 ### Organizations
 
 - Auth0's B2B multi-tenancy primitive — each "Organization" represents a business customer
-- Per-org: enterprise connections (BYOIDP), branding, member management, invitation flows
+- Per-org: enterprise connections (BYOIDP (Bring Your Own Identity Provider)), branding, member management, invitation flows
 - **When to lead with Organizations:** The prospect is a B2B SaaS company that needs each of their customers to have their own SSO, their own user directory, and customized login experience. This is Auth0's strongest B2B differentiation.
 
 ### Machine-to-Machine (M2M)
 
 - Client Credentials flow: service authenticates directly with Auth0 using a client ID + secret, gets an access token
-- Used for backend-to-backend communication, microservices, CLIs, CI/CD pipelines
+- Used for backend-to-backend communication, microservices, CLIs, CI/CD (Continuous Integration/Continuous Deployment) pipelines
 - Token caching is important — M2M tokens should be cached to rate limit, not requested per call
 
 ### Attack Protection
@@ -198,7 +198,7 @@ Auth0's term for identity sources — where users come from.
 - Brute Force Protection: lockout after N failed attempts
 - Bot Detection: CAPTCHA-based protection on signup/login flows
 - Suspicious IP Throttling
-- **Security differentiation:** Auth0 embeds security controls directly into the auth flow — no separate WAF or bot management tool needed for auth-specific threats.
+- **Security differentiation:** Auth0 embeds security controls directly into the auth flow — no separate WAF (Web Application Firewall) or bot management tool needed for auth-specific threats.
 
 ---
 
@@ -222,7 +222,7 @@ Auth0's term for identity sources — where users come from.
 
 **When Entra ID wins:**
 - Customer is all-Microsoft (M365, Azure, Dynamics) and is cost-conscious
-- Budget is already inside EA agreement
+- Budget is already inside EA (Enterprise Agreement) agreement
 - Basic SSO requirements only — no complex LCM, no non-Microsoft apps
 
 **When Okta wins:**
@@ -231,7 +231,7 @@ Auth0's term for identity sources — where users come from.
 - Complex LCM with non-Microsoft HR systems (Workday, BambooHR)
 - Zero trust across heterogeneous infrastructure (AWS + Azure + on-prem)
 - Customer Identity requirements alongside Workforce (unified CIAM + WF)
-- Stringent compliance needs: FedRAMP High, SOC2 Type II, HIPAA (Okta has broad certifications)
+- Stringent compliance needs: FedRAMP High, SOC 2 Type II, HIPAA (Okta has broad certifications)
 
 **Common Entra objection:** "We already have Entra — why pay for Okta too?"
 **Response:** "Entra is great for Microsoft apps. The question is what percentage of your apps are Microsoft-native. For most enterprises, it's 30-40%. For the other 60-70% — Salesforce, ServiceNow, Workday, AWS, custom apps — Okta's OIN catalog and LCM connectors deliver faster time-to-value and more complete coverage. Many of our largest customers run both: Entra for Microsoft apps, Okta as the meta-IdP federating everything."
@@ -254,7 +254,7 @@ HR System (Workday) → [SCIM/API] → Okta Universal Directory
 
 Okta is the hub. Every app trusts Okta. Users are provisioned and deprovisioned centrally.
 
-### Auth0 Customer Identity Pattern (B2C)
+### Auth0 Customer Identity Pattern (B2C (Business-to-Consumer))
 
 ```
 Your App (SPA/Mobile/Web) → [Redirect] → Auth0 Universal Login
@@ -265,7 +265,7 @@ Your App (SPA/Mobile/Web) → [Redirect] → Auth0 Universal Login
                                                ↓
                               [Tokens issued] → App receives ID + Access Token
                                                ↓
-                              Your API → [validates Access Token with JWKS]
+                              Your API → [validates Access Token with JWKS (JSON Web Key Set)]
 ```
 
 ### Auth0 B2B Multi-Tenant Pattern (Organizations)
@@ -286,14 +286,14 @@ Knowing these is table stakes for security-conscious buyers.
 
 | Certification | Okta Workforce | Auth0/CIC | Notes |
 |--------------|----------------|-----------|-------|
-| SOC 2 Type II | Yes | Yes | Both |
-| ISO 27001 | Yes | Yes | Both |
-| HIPAA BAA | Yes | Yes | Business Associate Agreement available |
-| FedRAMP High | Yes | Limited | Okta FedRAMP is a separate environment; critical for government |
-| PCI DSS | Yes | Yes | Payment card industry |
-| GDPR | Yes | Yes | Data residency: EU Cell available in both |
-| CCPA | Yes | Yes | |
-| CJIS | Yes (FedRAMP env) | No | Law enforcement use cases |
+| SOC 2 (System and Organization Controls 2) Type II | Yes | Yes | Both |
+| ISO (International Organization for Standardization) 27001 | Yes | Yes | Both |
+| HIPAA (Health Insurance Portability and Accountability Act) BAA | Yes | Yes | Business Associate Agreement available |
+| FedRAMP (Federal Risk and Authorization Management Program) High | Yes | Limited | Okta FedRAMP is a separate environment; critical for government |
+| PCI DSS (Payment Card Industry Data Security Standard) | Yes | Yes | Payment card industry |
+| GDPR (General Data Protection Regulation) | Yes | Yes | Data residency: EU Cell available in both |
+| CCPA (California Consumer Privacy Act) | Yes | Yes | |
+| CJIS (Criminal Justice Information Services) | Yes (FedRAMP env) | No | Law enforcement use cases |
 
 **Data residency:** Okta offers US and EU cells. Auth0 offers US, EU, AU deployments. This comes up in every EU enterprise deal.
 

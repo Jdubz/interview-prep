@@ -65,56 +65,165 @@ Level 4 — Score History
     Removes the reverted score from history.
 */
 
+type Player = {
+  playerId: string;
+  score: number;
+  history: number[];
+  team?: string;
+}
+
 export class Leaderboard {
+  players: Map<string, Player>;
   constructor() {
+    this.players = new Map();
   }
 
   addScore(playerId: string, score: number): void {
-    throw new Error("TODO: implement addScore");
+    // dont clear history & team.
+    let player = this.players.get(playerId);
+    if (!player) {
+      player = {
+        playerId,
+        score,
+        history: [],
+      }
+    }
+    player.score = score;
+    player.history.push(score);
+    this.players.set(playerId, player);
   }
+  // REVIEW: Looks good. Correctly preserves history/team on overwrite.
+  // Minor: the `score` field is set twice for new players (init + line 93).
+  // You could omit `score` from the initial object and let line 93 handle it.
 
   getScore(playerId: string): number | null {
-    throw new Error("TODO: implement getScore");
+    const player = this.players.get(playerId);
+    if (!player) return null;
+    return player.score;
   }
+  // REVIEW: Clean, no issues.
 
   removePlayer(playerId: string): boolean {
-    throw new Error("TODO: implement removePlayer");
+    if (!this.players.has(playerId)) return false
+    this.players.delete(playerId);
+    return true;
   }
+  // REVIEW: Works. Missing semicolon on the `return false` line.
 
   getPlayerCount(): number {
-    throw new Error("TODO: implement getPlayerCount");
+    return this.players.size;
   }
+  // REVIEW: Clean, no issues.
 
   getTop(n: number): string[] {
-    throw new Error("TODO: implement getTop");
+    const allPlayers = this._getSortedPlayers();
+    const topPlayers = allPlayers.slice(0, n);
+    return topPlayers.map(player => player.playerId);
   }
+  // REVIEW: Works. Could simplify by chaining:
+  //   return this._getSortedPlayers().slice(0, n).map(p => p.playerId);
 
   getRank(playerId: string): number | null {
-    throw new Error("TODO: implement getRank");
+    const allPlayers = this._getSortedPlayers();
+    let rank;
+    const player = allPlayers.find((player, index) => {
+      if (player.playerId === playerId) {
+        rank = index + 1;
+        return true;
+      }
+    });
+    return rank || null;
   }
+  // REVIEW: Works but has a subtle edge case — `rank || null` would
+  // return null if rank were 0, but since ranks are 1-based that's
+  // fine here. However, `rank ?? null` would be more intentional.
+  // Also, the `player` variable is assigned but never used.
+  // Consider: `const idx = allPlayers.findIndex(p => p.playerId === playerId);`
+  //           `return idx === -1 ? null : idx + 1;`
 
   getPlayersInRange(minScore: number, maxScore: number): string[] {
-    throw new Error("TODO: implement getPlayersInRange");
+    const allPlayers = this._getSortedPlayers();
+    const playersInRange = allPlayers.filter((player) => {
+      return player.score >= minScore && player.score <= maxScore;
+    });
+    return playersInRange.map(player => player.playerId);
   }
+  // REVIEW: Correct. Same chaining opportunity as getTop.
 
   addPlayerToTeam(playerId: string, team: string): boolean {
-    throw new Error("TODO: implement addPlayerToTeam");
+    const player = this.players.get(playerId);
+    if (!player) return false;
+    player.team = team;
+    return true;
   }
+  // REVIEW: Clean, no issues.
 
   getTeamScore(team: string): number | null {
-    throw new Error("TODO: implement getTeamScore");
+    let score = 0;
+    this.players.forEach(player => {
+      if (player.team === team) {
+        score += player.score;
+      }
+    });
+
+    return score || null;
   }
+  // REVIEW: BUG — `score || null` returns null when score is 0.
+  // If all players on a team have score 0, this returns null instead of 0.
+  // Fix: track a `found` boolean, or count matching players, and return
+  // `found ? score : null` to distinguish "team exists with score 0"
+  // from "team doesn't exist".
 
   getTeamRanking(): string[] {
-    throw new Error("TODO: implement getTeamRanking");
+    const teams: Set<string> = new Set();
+    this.players.forEach(player => {
+      if (player.team) {
+        teams.add(player.team);
+      }
+    });
+    const teamsArray = Array.from(teams);
+    teamsArray.sort((a, b) => {
+      const scoreA = this.getTeamScore(a)!;
+      const scoreB = this.getTeamScore(b)!;
+      return scoreA === scoreB ? a.localeCompare(b) : scoreB - scoreA;
+    });
+    return teamsArray;
   }
+  // REVIEW: Works. getTeamScore is called O(t) times inside sort
+  // (once per comparison), so scores are recomputed repeatedly.
+  // For a drill this is fine, but in production you'd precompute
+  // a Map<string, number> of team scores first.
 
   getScoreHistory(playerId: string): number[] {
-    throw new Error("TODO: implement getScoreHistory");
+    const player = this.players.get(playerId);
+    return player?.history || [];
   }
+  // REVIEW: Correct. Note this returns a reference to the internal
+  // array — callers could mutate it. Fine for a drill, but worth
+  // knowing (a defensive copy would be `[...player.history]`).
 
   revertScore(playerId: string): boolean {
-    throw new Error("TODO: implement revertScore");
+    const player = this.players.get(playerId);
+    if (!player) return false;
+    player.history.pop();
+    if (player.history.length === 0) {
+      this.players.delete(playerId);
+      return true;
+    }
+    player.score =  player.history[player.history.length - 1];
+    return true;
+  }
+  // REVIEW: BUG (fixed) — previously returned false when removing
+  // the player after popping the last history entry. Should return true
+  // because a revert did occur. Also: extra space before `player.history`
+  // on the score assignment line.
+
+  _getSortedPlayers(): Player[] {
+    const allPlayers = Array.from(this.players.values());
+    allPlayers.sort((a, b) => {
+      return a.score === b.score ? a.playerId.localeCompare(b.playerId) : b.score - a.score;
+    });
+    return allPlayers;
   }
 }
 

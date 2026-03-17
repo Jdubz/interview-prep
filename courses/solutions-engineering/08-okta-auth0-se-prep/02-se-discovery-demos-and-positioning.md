@@ -1,4 +1,4 @@
-# 02 -- SE Discovery, Demos, and Positioning for Okta/Auth0
+# 02 -- SE (Solutions Engineer) Discovery, Demos, and Positioning for Okta/Auth0
 
 Identity is a technical domain with strong opinions. Customers come in with existing tools, real security incidents, and compliance mandates. Discovery in identity deals requires you to unpack their current state — the protocols they use, the apps they manage, the pain they feel — before you can position a solution. This file covers the discovery framework, demo structure, competitive positioning, and objection handling specific to Okta/Auth0 SE work.
 
@@ -219,7 +219,7 @@ Auth0 demos run differently from Workforce demos. Your audience is developers or
 
 ---
 
-## POC Design for Identity Deals
+## POC (Proof of Concept) Design for Identity Deals
 
 ### Okta Workforce POC Checklist
 
@@ -276,7 +276,7 @@ When a customer asks "how would Okta fit into our environment," draw this on a w
     ├── AWS Console (OIDC)
     ├── GitHub Enterprise (SAML)
     ├── Custom Internal App (OIDC)
-    └── On-prem apps (via Okta Access Gateway or RADIUS)
+    └── On-prem apps (via Okta Access Gateway or RADIUS (Remote Authentication Dial-In User Service))
         ↓
 [Workflows] → Slack / ServiceNow / Jira
         ↓

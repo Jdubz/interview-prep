@@ -9,6 +9,14 @@ Solve these drills in TypeScript first to focus on problem-solving without langu
 | 01 | `drill_01_file_storage.ts` | `FileStorage` |
 | 02 | `drill_02_key_value_store.ts` | `KeyValueStore` |
 | 03 | `drill_03_feature_flag_service.ts` | `FeatureFlagService` |
+| 04 | `drill_04_task_scheduler.ts` | `TaskScheduler` |
+| 05 | `drill_05_leaderboard.ts` | `Leaderboard` |
+| 06 | `drill_06_inventory_tracker.ts` | `InventoryTracker` |
+| 07 | `drill_07_payment_processor.ts` | `PaymentProcessor` |
+| 08 | `drill_08_resource_scheduler.ts` | `ResourceScheduler` |
+
+> Drills 09-10 (Stripe Billing/Connect) were removed — they modeled a fake Stripe API
+> instead of teaching the real one. See `courses/stripe/` for actual Stripe product knowledge.
 
 ## How to work
 

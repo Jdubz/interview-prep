@@ -6,7 +6,7 @@ The hiring manager (HM) interview at Okta is typically your second or third conv
 
 ## What Okta Hiring Managers Evaluate
 
-Okta SE hiring managers calibrate against four dimensions. Know these before you walk in.
+Okta SE (Solutions Engineer) hiring managers calibrate against four dimensions. Know these before you walk in.
 
 | Dimension | What They Are Testing | How to Demonstrate It |
 |-----------|----------------------|----------------------|
@@ -35,7 +35,7 @@ Okta SE hiring managers calibrate against four dimensions. Know these before you
 **What they want:** Genuine conviction, not just flattery. They want to know you have done the research and formed an opinion.
 
 **Prepared answer:**
-"Okta is the only vendor with a credible answer to both the enterprise Workforce Identity market and the Customer Identity market. Entra dominates the Microsoft stack, but its breadth outside Microsoft is limited. Ping and ForgeRock are trying to move to the cloud after being built on-prem. Auth0, under Okta, is the developer-first CIAM platform — the DX is genuinely better than Cognito or rolling your own. What drew me to Okta specifically is the market position: 7,000+ integrations in the OIN, FedRAMP authorization, and the only platform where I can have the Workforce and Customer Identity conversation with the same customer. I also think the zero-trust narrative is genuinely important, and Okta's FastPass and Continuous Access Evaluation are early and well-positioned there. I want to sell something I believe in technically."
+"Okta is the only vendor with a credible answer to both the enterprise Workforce Identity market and the Customer Identity market. Entra dominates the Microsoft stack, but its breadth outside Microsoft is limited. Ping and ForgeRock are trying to move to the cloud after being built on-prem. Auth0, under Okta, is the developer-first CIAM platform — the DX (Developer Experience) is genuinely better than Cognito or rolling your own. What drew me to Okta specifically is the market position: 7,000+ integrations in the OIN, FedRAMP authorization, and the only platform where I can have the Workforce and Customer Identity conversation with the same customer. I also think the zero-trust narrative is genuinely important, and Okta's FastPass and Continuous Access Evaluation are early and well-positioned there. I want to sell something I believe in technically."
 
 ---
 
@@ -56,7 +56,7 @@ Okta SE hiring managers calibrate against four dimensions. Know these before you
 
 ### "How do you work with an account executive?"
 
-**What they want:** Evidence that you know the SE/AE partnership model and can navigate it without friction.
+**What they want:** Evidence that you know the SE/AE (Account Executive) partnership model and can navigate it without friction.
 
 **Answer framework:**
 "My model is that the AE owns the relationship and the commercial motion — pipeline, forecast, pricing, contracting. I own the technical win. We divide responsibility clearly so we are not tripping over each other in front of the customer. In practice, I brief the AE after every technical call so we are aligned on what I learned about the customer's environment and pain. I also pull the AE in when I am about to set expectations around roadmap, timeline, or price — I do not freelance on commercial terms. When there is tension — an AE who wants to skip discovery and go straight to a demo, or overpromise a feature — I address it directly but privately. I would rather have that conversation internally than have a customer feel misled."
@@ -80,7 +80,7 @@ Okta SE hiring managers calibrate against four dimensions. Know these before you
 **What they want:** Confirmation that you see beyond the deal close. Okta SEs at many segments stay engaged post-sale or hand off to customer success — they want someone who thinks about adoption, not just signatures.
 
 **Answer:**
-"To me, the SE's job is not done at technical win — it is done when the customer is live and realizing value. In practice during a sales cycle, that means I am already thinking about implementation: am I setting realistic expectations about migration complexity, about the AD agent installation, about how long MFA rollout takes in a 5,000-person company? I write my POC presentations in a way that the customer's internal champion can present to their steering committee — because if they cannot get internal approval, the deal dies anyway. Post-sale, I stay engaged for the first 90 days when I can — introductions to CSM and professional services, a check-in call at 30 days to make sure the integration questions that came up in the POC got answered. The SE's reputation is built on whether customers succeed, not on how many signatures we got."
+"To me, the SE's job is not done at technical win — it is done when the customer is live and realizing value. In practice during a sales cycle, that means I am already thinking about implementation: am I setting realistic expectations about migration complexity, about the AD agent installation, about how long MFA rollout takes in a 5,000-person company? I write my POC presentations in a way that the customer's internal champion can present to their steering committee — because if they cannot get internal approval, the deal dies anyway. Post-sale, I stay engaged for the first 90 days when I can — introductions to CSM (Customer Success Manager) and professional services, a check-in call at 30 days to make sure the integration questions that came up in the POC got answered. The SE's reputation is built on whether customers succeed, not on how many signatures we got."
 
 ---
 
@@ -101,7 +101,7 @@ Be honest and connect the dots deliberately.
 **What they want:** Market awareness, intellectual honesty, the ability to hold a real strategic conversation.
 
 **Answer:**
-"A few challenges stand out. First, the Microsoft Entra expansion — Microsoft is aggressively bundling Entra capabilities into E3/E5 licenses, and 'good enough' for free is a real competitive threat in the SMB and lower mid-market segments. Okta needs to stay ahead on capability where Entra is behind: complex LCM, cross-cloud zero trust, FedRAMP, and CIAM — the segments where Microsoft is weaker or has less incentive to invest. Second, the Auth0/Okta integration — they are still largely separate platforms with separate engineering organizations. The customer story of a unified Workforce + Customer Identity platform is compelling, but the engineering reality is two separate products. The faster those converge into a shared platform, the stronger the competitive moat. Third, AI-native identity — agents authenticating to services, non-human identity at scale. That is an emerging space where Okta has a head start with Workforce but the CIAM and machine identity angle is new ground."
+"A few challenges stand out. First, the Microsoft Entra expansion — Microsoft is aggressively bundling Entra capabilities into E3/E5 licenses, and 'good enough' for free is a real competitive threat in the SMB (Small and Medium-sized Business) and lower mid-market segments. Okta needs to stay ahead on capability where Entra is behind: complex LCM, cross-cloud zero trust, FedRAMP, and CIAM — the segments where Microsoft is weaker or has less incentive to invest. Second, the Auth0/Okta integration — they are still largely separate platforms with separate engineering organizations. The customer story of a unified Workforce + Customer Identity platform is compelling, but the engineering reality is two separate products. The faster those converge into a shared platform, the stronger the competitive moat. Third, AI-native identity — agents authenticating to services, non-human identity at scale. That is an emerging space where Okta has a head start with Workforce but the CIAM and machine identity angle is new ground."
 
 ---
 
@@ -164,7 +164,7 @@ Prepare for the full loop so the HM interview is not your first encounter with t
 | **Technical Screen / Product Deep Dive** (45-60 min) | Video with technical interviewer | Okta and Auth0 product depth, protocol knowledge, architecture whiteboarding |
 | **Mock Discovery Call** (30-45 min) | Roleplay — you as SE, interviewer as prospect | Open-ended discovery questions, listening, pain identification, no premature pitching |
 | **Live Demo or Take-Home POC** | Variable | Build a small Auth0 app or demo a Workforce workflow; present it |
-| **Behavioral / Panel** (60 min) | Multi-interviewer | STAR+I stories across all six categories (see Module 07-interview-preparation) |
+| **Behavioral / Panel** (60 min) | Multi-interviewer | STAR+I (Situation, Task, Action, Result + Impact) stories across all six categories (see Module 07-interview-preparation) |
 | **Skip-Level / Leadership** (30 min) | Senior leader | Strategic thinking, Okta's mission, your career arc |
 
 ---

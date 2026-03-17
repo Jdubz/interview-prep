@@ -70,61 +70,154 @@ Level 4 — Change History
     Removes the undone value from history.
 */
 
+type Product = {
+  sku: string;
+  quantity: number;
+  history: number[];
+  category: Set<string>;
+  threshold: number;
+} 
+
 export class InventoryTracker {
+  inventory: Map<string, Product>;
+
   constructor() {
+    this.inventory = new Map();
   }
 
   addProduct(sku: string, quantity: number): boolean {
-    throw new Error("TODO: implement addProduct");
+    if (this.inventory.has(sku)) return false;
+    this.inventory.set(sku, {
+      sku,
+      quantity,
+      history: [quantity],
+      category: new Set(),
+      threshold: -1,
+    });
+    return true;
   }
+  // REVIEW: Clean. Good use of early return for duplicate check.
 
   getQuantity(sku: string): number {
-    throw new Error("TODO: implement getQuantity");
+    const product = this.inventory.get(sku);
+    if (!product) return -1;
+    return product.quantity;
   }
+  // REVIEW: Clean, no issues.
 
   restock(sku: string, amount: number): boolean {
-    throw new Error("TODO: implement restock");
+    const product = this.inventory.get(sku);
+    if (!product) return false;
+    const newQuantity = product.quantity + amount;
+    product.history.push(newQuantity);
+    product.quantity = newQuantity;
+    return true;
   }
+  // REVIEW: Correct. History records the resulting quantity (not
+  // the delta), which matches what getHistory/undoLastChange expect.
 
   sell(sku: string, amount: number): boolean {
-    throw new Error("TODO: implement sell");
+    const product = this.inventory.get(sku);
+    if (!product) return false;
+    if (product.quantity < amount) return false;
+    const newQuantity = product.quantity - amount;
+    product.history.push(newQuantity);
+    product.quantity = newQuantity;
+    return true;
   }
+  // REVIEW: Clean. Correctly guards against insufficient stock.
 
   removeProduct(sku: string): boolean {
-    throw new Error("TODO: implement removeProduct");
+    if (!this.inventory.has(sku)) return false;
+    this.inventory.delete(sku);
+    return true;
   }
+  // REVIEW: Clean, no issues.
 
   setCategory(sku: string, category: string): boolean {
-    throw new Error("TODO: implement setCategory");
+    const product = this.inventory.get(sku);
+    if (!product) return false;
+    product.category.add(category);
+    return true;
   }
+  // REVIEW: Works, but the spec says "assign a category" (singular),
+  // implying one category per product. Using a Set allows multiple
+  // categories. The tests don't catch this, but `category: string`
+  // and reassignment (`product.category = category`) would match
+  // the spec more precisely.
 
   getByCategory(category: string): string[] {
-    throw new Error("TODO: implement getByCategory");
+    const products = Array.from(this.inventory.values());
+    const categoryProducts = products.filter(p => p.category.has(category));
+    categoryProducts.sort((a, b) => a.sku.localeCompare(b.sku));
+    return categoryProducts.map(p => p.sku);
   }
+  // REVIEW: Correct. Could chain filter/sort/map for brevity.
 
   listProducts(): string[] {
-    throw new Error("TODO: implement listProducts");
+    const products = Array.from(this.inventory.values());
+    products.sort((a, b) => a.sku.localeCompare(b.sku));
+    return products.map(p => p.sku);
   }
+  // REVIEW: Works. Could simplify:
+  //   return Array.from(this.inventory.keys()).sort();
 
   setThreshold(sku: string, threshold: number): boolean {
-    throw new Error("TODO: implement setThreshold");
+    const product = this.inventory.get(sku);
+    if (!product) return false;
+    product.threshold = threshold;
+    return true;
   }
+  // REVIEW: Clean, no issues.
 
   getLowStock(): string[] {
-    throw new Error("TODO: implement getLowStock");
+    const products = Array.from(this.inventory.values());
+    const lowInventory = products.filter(p => {
+      return p.threshold !== -1 && p.quantity <= p.threshold;
+    });
+    lowInventory.sort((a,b) => {
+      return a.quantity !== b.quantity ? a.quantity - b.quantity : a.sku.localeCompare(b.sku);
+    });
+    return lowInventory.map(p => p.sku);
   }
+  // REVIEW: Works. Using `-1` as sentinel for "no threshold" is
+  // fragile — a threshold of 0 is valid, but -1 could be confused.
+  // Consider `threshold: number | null` with a `!== null` check
+  // instead. (The current approach works because -1 is never a
+  // meaningful threshold value.)
 
   bulkRestock(updates: [string, number][]): number {
-    throw new Error("TODO: implement bulkRestock");
+    let updated = 0;
+    updates.forEach(([sku, restock]) => {
+      if (this.restock(sku, restock)) updated++;
+    });
+    return updated;
   }
+  // REVIEW: Nice — good reuse of `this.restock()` so history
+  // tracking is handled in one place.
 
   getHistory(sku: string): number[] {
-    throw new Error("TODO: implement getHistory");
+    const product = this.inventory.get(sku);
+    if (!product) return [];
+    return product.history;
   }
+  // REVIEW: Same note as drill_05 — returns a reference to the
+  // internal array, so callers could mutate it. Fine for a drill.
 
   undoLastChange(sku: string): boolean {
-    throw new Error("TODO: implement undoLastChange");
+    const product = this.inventory.get(sku);
+    if (!product) return false;
+    product.history.pop();
+    if (!product.history.length) {
+      this.inventory.delete(sku);
+    } else {
+      product.quantity = product.history[product.history.length - 1];
+    }
+    return true;
   }
+  // REVIEW: Nicely done — correctly removes the product when history
+  // is exhausted and returns true (learned from the drill_05 bug).
+  // Clean branching with `!product.history.length`.
 }
 
 // ─── Self-Checks (do not edit below this line) ──────────────────

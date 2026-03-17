@@ -1,4 +1,4 @@
-.PHONY: ts1 ts2 ts3 ts4 ts5 ts6 py1 py2 py3
+.PHONY: ts1 ts2 ts3 ts4 ts5 ts6 ts7 ts8 ts9 ts10 py1 py2 py3
 
 ts1:
 	npx tsx typescript/drill_01_file_storage.ts
@@ -17,6 +17,18 @@ ts5:
 
 ts6:
 	npx tsx typescript/drill_06_inventory_tracker.ts
+
+ts7:
+	npx tsx typescript/drill_07_payment_processor.ts
+
+ts8:
+	npx tsx typescript/drill_08_resource_scheduler.ts
+
+ts9:
+	npx tsx typescript/drill_09_stripe_billing_engine.ts
+
+ts10:
+	npx tsx typescript/drill_10_stripe_connect_platform.ts
 
 py1:
 	python3 python/drill_01_file_storage.py
