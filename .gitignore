@@ -57,6 +57,9 @@ Thumbs.db
 # Cheat sheet PDFs (generated)
 cheat-sheets/out/
 
+# Stripe interview docs (potentially NDA-protected)
+courses/stripe/docs/
+
 # Coverage
 htmlcov/
 .coverage
