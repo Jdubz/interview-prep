@@ -73,8 +73,7 @@ Level 4 — Webhook Processing
 
     processWebhook(event: WebhookEvent): Promise<boolean>
       Process an incoming webhook event.
-      - Verify event.signature matches sha256(event.id + ":" + secret)
-        (use the verifySignature helper provided).
+      - Verify event.signature using the verifySignature(event, secret) helper provided.
       - Deduplicate: skip events already processed (by event.id).
       - Call the registered handler for event.type.
       - Return true if processed, false if invalid/duplicate/no handler.
@@ -127,6 +126,9 @@ class FakeServer {
   ): Promise<ServerResponse> {
     this.requestCount++;
 
+    // Strip query string for route matching, keep full path for handlers
+    const pathOnly = path.split("?")[0];
+
     // Simulate occasional 500s (every 5th POST/PUT)
     if ((method === "POST" || method === "PUT") && this.requestCount % 5 === 0) {
       const idemKey = headers?.["Idempotency-Key"];
@@ -145,16 +147,16 @@ class FakeServer {
     let response: ServerResponse;
 
     // Route
-    const userMatch = path.match(/^\/users\/(.+)$/);
+    const userMatch = pathOnly.match(/^\/users\/(.+)$/);
 
-    if (path === "/users" && method === "GET") {
+    if (pathOnly === "/users" && method === "GET") {
       response = this.handleListUsers(path, body, headers);
     } else if (userMatch && method === "GET") {
       const user = this.users.get(userMatch[1]);
       response = user
         ? { status: 200, body: user }
         : { status: 404, body: { error: "Not found" } };
-    } else if (path === "/users" && method === "POST") {
+    } else if (pathOnly === "/users" && method === "POST") {
       const id = `usr_${String(this.nextId++).padStart(3, "0")}`;
       const user: User = {
         id,

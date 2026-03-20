@@ -1,358 +1,218 @@
 /*
-╔══════════════════════════════════════════════════════════════════╗
-║                                                                  ║
-║   REFERENCE SOLUTION — Do not open until you've completed        ║
-║   your attempt. Seriously. Close this file now.                  ║
-║                                                                  ║
-╚══════════════════════════════════════════════════════════════════╝
++================================================================+
+|                                                                  |
+|   REFERENCE SOLUTION -- Do not open until you've completed       |
+|   your attempt. Seriously. Close this file now.                  |
+|                                                                  |
++================================================================+
 */
 
 // ─── Types ───────────────────────────────────────────────────────
 
-export type SubscriptionEvent = {
+export type Transaction = {
   id: string;
-  customerId: string;
-  plan: string;
-  action: "created" | "upgraded" | "downgraded" | "canceled" | "renewed";
-  timestamp: number;
-  mrr: number;
+  merchant: string;
+  amount: number;
+  currency: string;
+  type: string;
 };
 
-export type MRRMovements = {
-  new: number;
-  expansion: number;
-  contraction: number;
-  churn: number;
-  net: number;
+export type FeeRule = {
+  type: string;
+  flatFee: number;
+  percentFee: number;
 };
 
-type CustomerState = {
-  plan: string | null;
-  mrr: number;
-  active: boolean;
-  createdTimestamp: number;
+export type VolumeTier = {
+  upTo: number;
+  discountPercent: number;
 };
 
-// ─── Analytics Engine ────────────────────────────────────────────
+export type MerchantSummary = {
+  totalVolume: number;
+  totalFees: number;
+  transactionCount: number;
+};
 
-export class SubscriptionAnalytics {
-  private customers: Map<string, CustomerState> = new Map();
-  private events: SubscriptionEvent[] = [];
+export type DiscountedSummary = MerchantSummary & {
+  discountPercent: number;
+  discountedFees: number;
+};
 
-  constructor() {
-    // nothing needed — fields initialized inline
+export type RejectedTransaction = {
+  id: string;
+  reason: string;
+};
+
+export type ProcessingResult = {
+  processed: Map<string, DiscountedSummary>;
+  rejected: RejectedTransaction[];
+};
+
+export type SettlementEntry = {
+  merchant: string;
+  currency: string;
+  grossVolume: number;
+  totalFees: number;
+  netAmount: number;
+};
+
+// ─── Part 1 — Fee Calculation ────────────────────────────────────
+
+export function calculateFees(
+  transactions: Transaction[],
+  feeSchedule: FeeRule[],
+): Map<string, MerchantSummary> {
+  const feeMap = new Map<string, FeeRule>();
+  for (const rule of feeSchedule) {
+    feeMap.set(rule.type, rule);
   }
 
-  // ── Part 1 ──────────────────────────────────────────────────────
+  const summaries = new Map<string, MerchantSummary>();
 
-  ingest(events: SubscriptionEvent[]): void {
-    for (const event of events) {
-      this.events.push(event);
-      this.processEvent(event);
+  for (const tx of transactions) {
+    const rule = feeMap.get(tx.type);
+    if (!rule) continue; // skip unknown types in Part 1
+
+    const fee = rule.flatFee + Math.ceil(tx.amount * rule.percentFee / 10000);
+
+    const existing = summaries.get(tx.merchant);
+    if (existing) {
+      existing.totalVolume += tx.amount;
+      existing.totalFees += fee;
+      existing.transactionCount += 1;
+    } else {
+      summaries.set(tx.merchant, {
+        totalVolume: tx.amount,
+        totalFees: fee,
+        transactionCount: 1,
+      });
     }
   }
 
-  private processEvent(event: SubscriptionEvent): void {
-    const { customerId, plan, action, mrr, timestamp } = event;
+  return summaries;
+}
 
-    switch (action) {
-      case "created": {
-        this.customers.set(customerId, {
-          plan,
-          mrr,
-          active: true,
-          createdTimestamp: timestamp,
-        });
+// ─── Part 2 — Tiered Volume Discounts ────────────────────────────
+
+export function applyVolumeDiscounts(
+  summaries: Map<string, MerchantSummary>,
+  tiers: VolumeTier[],
+): Map<string, DiscountedSummary> {
+  const sortedTiers = [...tiers].sort((a, b) => a.upTo - b.upTo);
+  const result = new Map<string, DiscountedSummary>();
+
+  for (const [merchantId, summary] of summaries) {
+    let discountPercent = 0;
+    for (const tier of sortedTiers) {
+      if (summary.totalVolume <= tier.upTo) {
+        discountPercent = tier.discountPercent;
         break;
       }
-      case "upgraded":
-      case "downgraded":
-      case "renewed": {
-        const state = this.customers.get(customerId);
-        if (state) {
-          state.plan = plan;
-          state.mrr = mrr;
-          state.active = true;
-        }
-        break;
-      }
-      case "canceled": {
-        const state = this.customers.get(customerId);
-        if (state) {
-          state.active = false;
-          // keep plan set so we know what they were on when canceled
-          // but getCustomerPlan returns null for canceled customers
-        }
-        break;
-      }
+    }
+
+    const discountAmount = Math.floor(summary.totalFees * discountPercent / 100);
+    const discountedFees = summary.totalFees - discountAmount;
+
+    result.set(merchantId, {
+      ...summary,
+      discountPercent,
+      discountedFees,
+    });
+  }
+
+  return result;
+}
+
+// ─── Part 3 — Transaction Validation & Rejection ─────────────────
+
+function validateTransaction(tx: Transaction, feeSchedule: FeeRule[]): string | null {
+  // Check amount
+  if (tx.amount <= 0 || tx.amount > 999999) {
+    return "invalid_amount";
+  }
+
+  // Check currency: exactly 3 uppercase A-Z
+  if (!/^[A-Z]{3}$/.test(tx.currency)) {
+    return "invalid_currency";
+  }
+
+  // Check type exists in fee schedule
+  const validTypes = new Set(feeSchedule.map(r => r.type));
+  if (!validTypes.has(tx.type)) {
+    return "invalid_type";
+  }
+
+  return null;
+}
+
+export function processTransactions(
+  transactions: Transaction[],
+  feeSchedule: FeeRule[],
+  tiers: VolumeTier[],
+): ProcessingResult {
+  const valid: Transaction[] = [];
+  const rejected: RejectedTransaction[] = [];
+
+  for (const tx of transactions) {
+    const reason = validateTransaction(tx, feeSchedule);
+    if (reason) {
+      rejected.push({ id: tx.id, reason });
+    } else {
+      valid.push(tx);
     }
   }
 
-  getActiveCount(): number {
-    let count = 0;
-    for (const state of this.customers.values()) {
-      if (state.active) count++;
-    }
-    return count;
+  const summaries = calculateFees(valid, feeSchedule);
+  const processed = applyVolumeDiscounts(summaries, tiers);
+
+  return { processed, rejected };
+}
+
+// ─── Part 4 — Settlement Report ──────────────────────────────────
+
+export function generateSettlement(
+  transactions: Transaction[],
+  feeSchedule: FeeRule[],
+): SettlementEntry[] {
+  const feeMap = new Map<string, FeeRule>();
+  for (const rule of feeSchedule) {
+    feeMap.set(rule.type, rule);
   }
 
-  getActiveByPlan(): Map<string, number> {
-    const counts = new Map<string, number>();
-    for (const state of this.customers.values()) {
-      if (state.active && state.plan) {
-        counts.set(state.plan, (counts.get(state.plan) ?? 0) + 1);
-      }
+  // Group by (merchant, currency)
+  const groups = new Map<string, SettlementEntry>();
+
+  for (const tx of transactions) {
+    const rule = feeMap.get(tx.type);
+    if (!rule) continue; // skip unknown types
+
+    const fee = rule.flatFee + Math.ceil(tx.amount * rule.percentFee / 10000);
+    const key = `${tx.merchant}|${tx.currency}`;
+
+    const existing = groups.get(key);
+    if (existing) {
+      existing.grossVolume += tx.amount;
+      existing.totalFees += fee;
+      existing.netAmount = existing.grossVolume - existing.totalFees;
+    } else {
+      groups.set(key, {
+        merchant: tx.merchant,
+        currency: tx.currency,
+        grossVolume: tx.amount,
+        totalFees: fee,
+        netAmount: tx.amount - fee,
+      });
     }
-    return counts;
   }
 
-  getCustomerPlan(customerId: string): string | null {
-    const state = this.customers.get(customerId);
-    if (!state || !state.active) return null;
-    return state.plan;
-  }
+  const entries = [...groups.values()];
+  entries.sort((a, b) => {
+    if (a.merchant !== b.merchant) return a.merchant < b.merchant ? -1 : 1;
+    return a.currency < b.currency ? -1 : a.currency > b.currency ? 1 : 0;
+  });
 
-  // ── Part 2 ──────────────────────────────────────────────────────
-
-  getCurrentMRR(): number {
-    let total = 0;
-    for (const state of this.customers.values()) {
-      if (state.active) total += state.mrr;
-    }
-    return total;
-  }
-
-  getMRRByPlan(): Map<string, number> {
-    const mrrByPlan = new Map<string, number>();
-    for (const state of this.customers.values()) {
-      if (state.active && state.plan) {
-        mrrByPlan.set(state.plan, (mrrByPlan.get(state.plan) ?? 0) + state.mrr);
-      }
-    }
-    return mrrByPlan;
-  }
-
-  getMRRMovements(startTs: number, endTs: number): MRRMovements {
-    // We need to know the MRR before each event to compute expansion/contraction.
-    // Replay all events, tracking per-customer MRR, and accumulate movements for
-    // events in the window.
-    const customerMrr = new Map<string, number>();
-    const result: MRRMovements = { new: 0, expansion: 0, contraction: 0, churn: 0, net: 0 };
-
-    for (const event of this.events) {
-      const prevMrr = customerMrr.get(event.customerId) ?? 0;
-
-      // Update tracking regardless of window (we need accurate state)
-      switch (event.action) {
-        case "created":
-          customerMrr.set(event.customerId, event.mrr);
-          break;
-        case "upgraded":
-        case "downgraded":
-        case "renewed":
-          customerMrr.set(event.customerId, event.mrr);
-          break;
-        case "canceled":
-          customerMrr.set(event.customerId, 0);
-          break;
-      }
-
-      // Only accumulate movements for events in the window
-      if (event.timestamp >= startTs && event.timestamp <= endTs) {
-        switch (event.action) {
-          case "created":
-            result.new += event.mrr;
-            break;
-          case "upgraded":
-            result.expansion += event.mrr - prevMrr;
-            break;
-          case "downgraded":
-            result.contraction += prevMrr - event.mrr;
-            break;
-          case "canceled":
-            result.churn += event.mrr;
-            break;
-          case "renewed":
-            // No MRR movement for renewals (unless MRR changed, which we ignore)
-            break;
-        }
-      }
-    }
-
-    result.net = result.new + result.expansion - result.contraction - result.churn;
-    return result;
-  }
-
-  // ── Part 3 ──────────────────────────────────────────────────────
-
-  getRetention(cohortMonth: string): number[] {
-    // Find all customers created in the cohort month
-    const [yearStr, monthStr] = cohortMonth.split("-");
-    const cohortYear = parseInt(yearStr, 10);
-    const cohortMonthNum = parseInt(monthStr, 10); // 1-indexed
-
-    const cohortStart = Date.UTC(cohortYear, cohortMonthNum - 1, 1);
-    const cohortEnd = Date.UTC(cohortYear, cohortMonthNum, 1); // exclusive: first day of next month
-
-    const cohortCustomers: string[] = [];
-    for (const event of this.events) {
-      if (
-        event.action === "created" &&
-        event.timestamp >= cohortStart &&
-        event.timestamp < cohortEnd
-      ) {
-        cohortCustomers.push(event.customerId);
-      }
-    }
-
-    if (cohortCustomers.length === 0) return [];
-
-    // Find the last month that contains any event
-    let maxTimestamp = 0;
-    for (const event of this.events) {
-      if (event.timestamp > maxTimestamp) maxTimestamp = event.timestamp;
-    }
-    const maxDate = new Date(maxTimestamp);
-    const lastYear = maxDate.getUTCFullYear();
-    const lastMonth = maxDate.getUTCMonth(); // 0-indexed
-
-    // Build cancellation times for cohort customers
-    const cancelTimestamps = new Map<string, number>();
-    for (const event of this.events) {
-      if (event.action === "canceled" && cohortCustomers.includes(event.customerId)) {
-        cancelTimestamps.set(event.customerId, event.timestamp);
-      }
-    }
-
-    // Generate retention rates for each month from cohort month through last event month
-    const retention: number[] = [];
-    let currentYear = cohortYear;
-    let currentMonth = cohortMonthNum - 1; // 0-indexed
-
-    while (
-      currentYear < lastYear ||
-      (currentYear === lastYear && currentMonth <= lastMonth)
-    ) {
-      const monthStart = Date.UTC(currentYear, currentMonth, 1);
-      let activeCount = 0;
-      for (const customerId of cohortCustomers) {
-        const cancelTs = cancelTimestamps.get(customerId);
-        // Active at start of month = not canceled before the start of this month
-        if (cancelTs === undefined || cancelTs >= monthStart) {
-          activeCount++;
-        }
-      }
-      retention.push(Math.round((activeCount / cohortCustomers.length) * 100));
-
-      // Advance to next month
-      currentMonth++;
-      if (currentMonth > 11) {
-        currentMonth = 0;
-        currentYear++;
-      }
-    }
-
-    return retention;
-  }
-
-  getChurnRate(startTs: number, endTs: number): number {
-    // Count active subscriptions at startTs (replay events up to but not including startTs)
-    const activeAtStart = new Set<string>();
-    for (const event of this.events) {
-      if (event.timestamp >= startTs) break;
-      switch (event.action) {
-        case "created":
-        case "upgraded":
-        case "downgraded":
-        case "renewed":
-          activeAtStart.add(event.customerId);
-          break;
-        case "canceled":
-          activeAtStart.delete(event.customerId);
-          break;
-      }
-    }
-
-    if (activeAtStart.size === 0) return 0;
-
-    // Count cancellations in the window
-    let canceledCount = 0;
-    for (const event of this.events) {
-      if (event.timestamp < startTs) continue;
-      if (event.timestamp > endTs) break;
-      if (event.action === "canceled") canceledCount++;
-    }
-
-    return Math.round((canceledCount / activeAtStart.size) * 100);
-  }
-
-  // ── Part 4 ──────────────────────────────────────────────────────
-
-  getUpgradePaths(): Map<string, Map<string, number>> {
-    // We need to track each customer's plan before upgrade
-    const customerPlan = new Map<string, string>();
-    const paths = new Map<string, Map<string, number>>();
-
-    for (const event of this.events) {
-      if (event.action === "created") {
-        customerPlan.set(event.customerId, event.plan);
-      } else if (event.action === "upgraded") {
-        const fromPlan = customerPlan.get(event.customerId);
-        if (fromPlan) {
-          if (!paths.has(fromPlan)) {
-            paths.set(fromPlan, new Map<string, number>());
-          }
-          const toPlanMap = paths.get(fromPlan)!;
-          toPlanMap.set(event.plan, (toPlanMap.get(event.plan) ?? 0) + 1);
-        }
-        customerPlan.set(event.customerId, event.plan);
-      } else if (event.action === "downgraded" || event.action === "renewed") {
-        customerPlan.set(event.customerId, event.plan);
-      }
-      // canceled: don't update plan tracking (they might resubscribe)
-    }
-
-    return paths;
-  }
-
-  getAverageLifetime(plan: string): number {
-    // Find customers who canceled while on the given plan.
-    // Lifetime = cancellation timestamp - creation timestamp.
-    const creationTime = new Map<string, number>();
-    const lifetimes: number[] = [];
-    const customerPlanAtCancel = new Map<string, string>();
-
-    // Track creation times and current plan for each customer
-    const currentPlan = new Map<string, string>();
-
-    for (const event of this.events) {
-      switch (event.action) {
-        case "created":
-          creationTime.set(event.customerId, event.timestamp);
-          currentPlan.set(event.customerId, event.plan);
-          break;
-        case "upgraded":
-        case "downgraded":
-        case "renewed":
-          currentPlan.set(event.customerId, event.plan);
-          break;
-        case "canceled": {
-          const custPlan = currentPlan.get(event.customerId);
-          if (custPlan === plan) {
-            const created = creationTime.get(event.customerId);
-            if (created !== undefined) {
-              lifetimes.push(event.timestamp - created);
-            }
-          }
-          break;
-        }
-      }
-    }
-
-    if (lifetimes.length === 0) return 0;
-    const sum = lifetimes.reduce((a, b) => a + b, 0);
-    return Math.round(sum / lifetimes.length);
-  }
+  return entries;
 }
 
 // ─── Self-Checks (do not edit below this line) ──────────────────
@@ -390,29 +250,6 @@ function checkMap(label: string, actual: Map<string, unknown>, expected: Record<
   }
 }
 
-function checkNestedMap(
-  label: string,
-  actual: Map<string, Map<string, number>>,
-  expected: Record<string, Record<string, number>>,
-): void {
-  const actualObj: Record<string, Record<string, number>> = {};
-  for (const [k, v] of actual) {
-    actualObj[k] = {};
-    for (const [k2, v2] of v) actualObj[k][k2] = v2;
-  }
-  const a = JSON.stringify(actualObj, Object.keys(actualObj).sort());
-  const e = JSON.stringify(expected, Object.keys(expected).sort());
-  if (a === e) {
-    _passed++;
-    console.log(`  \u2713 ${label}`);
-  } else {
-    _failed++;
-    console.log(`  \u2717 ${label}`);
-    console.log(`    expected: ${e}`);
-    console.log(`         got: ${a}`);
-  }
-}
-
 function level(name: string, fn: () => void): void {
   console.log(name);
   try {
@@ -430,136 +267,109 @@ function level(name: string, fn: () => void): void {
 
 // ─── Test Data ───────────────────────────────────────────────────
 
-function ts(dateStr: string): number {
-  return new Date(dateStr + "T00:00:00Z").getTime();
-}
+const FEE_SCHEDULE: FeeRule[] = [
+  { type: "card_present",     flatFee: 10, percentFee: 200 },
+  { type: "card_not_present", flatFee: 30, percentFee: 290 },
+  { type: "international",    flatFee: 30, percentFee: 390 },
+];
 
-const EVENTS: SubscriptionEvent[] = [
-  { id: "e01", customerId: "c1", plan: "starter",    action: "created",    timestamp: ts("2024-01-15"), mrr: 29  },
-  { id: "e02", customerId: "c2", plan: "pro",        action: "created",    timestamp: ts("2024-01-20"), mrr: 99  },
-  { id: "e03", customerId: "c3", plan: "starter",    action: "created",    timestamp: ts("2024-01-25"), mrr: 29  },
-  { id: "e04", customerId: "c4", plan: "enterprise", action: "created",    timestamp: ts("2024-02-01"), mrr: 249 },
-  { id: "e05", customerId: "c1", plan: "pro",        action: "upgraded",   timestamp: ts("2024-02-10"), mrr: 99  },
-  { id: "e06", customerId: "c5", plan: "starter",    action: "created",    timestamp: ts("2024-02-15"), mrr: 29  },
-  { id: "e07", customerId: "c3", plan: "starter",    action: "canceled",   timestamp: ts("2024-02-20"), mrr: 29  },
-  { id: "e08", customerId: "c2", plan: "enterprise", action: "upgraded",   timestamp: ts("2024-03-01"), mrr: 249 },
-  { id: "e09", customerId: "c6", plan: "pro",        action: "created",    timestamp: ts("2024-03-05"), mrr: 99  },
-  { id: "e10", customerId: "c1", plan: "enterprise", action: "upgraded",   timestamp: ts("2024-03-10"), mrr: 249 },
-  { id: "e11", customerId: "c5", plan: "pro",        action: "upgraded",   timestamp: ts("2024-03-15"), mrr: 99  },
-  { id: "e12", customerId: "c4", plan: "pro",        action: "downgraded", timestamp: ts("2024-03-20"), mrr: 99  },
-  { id: "e13", customerId: "c2", plan: "enterprise", action: "canceled",   timestamp: ts("2024-04-01"), mrr: 249 },
-  { id: "e14", customerId: "c6", plan: "pro",        action: "canceled",   timestamp: ts("2024-04-10"), mrr: 99  },
-  { id: "e15", customerId: "c7", plan: "starter",    action: "created",    timestamp: ts("2024-04-15"), mrr: 29  },
-  { id: "e16", customerId: "c1", plan: "enterprise", action: "renewed",    timestamp: ts("2024-04-20"), mrr: 249 },
-  { id: "e17", customerId: "c5", plan: "pro",        action: "canceled",   timestamp: ts("2024-05-01"), mrr: 99  },
-  { id: "e18", customerId: "c7", plan: "pro",        action: "upgraded",   timestamp: ts("2024-05-10"), mrr: 99  },
+const VOLUME_TIERS: VolumeTier[] = [
+  { upTo: 50000,    discountPercent: 0 },
+  { upTo: 200000,   discountPercent: 10 },
+  { upTo: Infinity,  discountPercent: 20 },
+];
+
+const TRANSACTIONS: Transaction[] = [
+  { id: "t01", merchant: "m1", amount: 10000,  currency: "USD", type: "card_present" },
+  { id: "t02", merchant: "m1", amount: 25000,  currency: "USD", type: "card_not_present" },
+  { id: "t03", merchant: "m1", amount: 15000,  currency: "EUR", type: "international" },
+  { id: "t04", merchant: "m1", amount: 8000,   currency: "USD", type: "card_present" },
+  { id: "t05", merchant: "m2", amount: 3000,   currency: "USD", type: "card_not_present" },
+  { id: "t06", merchant: "m2", amount: 7500,   currency: "USD", type: "card_present" },
+  { id: "t07", merchant: "m2", amount: 4200,   currency: "GBP", type: "international" },
+  { id: "t08", merchant: "m3", amount: 120000, currency: "USD", type: "card_not_present" },
+  { id: "t09", merchant: "m3", amount: 95000,  currency: "USD", type: "card_present" },
+  { id: "t10", merchant: "m3", amount: 45000,  currency: "EUR", type: "international" },
+];
+
+const TRANSACTIONS_WITH_INVALID: Transaction[] = [
+  ...TRANSACTIONS,
+  { id: "t11", merchant: "m1", amount: -500,    currency: "USD",  type: "card_present" },
+  { id: "t12", merchant: "m2", amount: 1000000, currency: "USD",  type: "card_not_present" },
+  { id: "t13", merchant: "m1", amount: 5000,    currency: "usd",  type: "card_present" },
+  { id: "t14", merchant: "m2", amount: 3000,    currency: "USD",  type: "wire_transfer" },
+  { id: "t15", merchant: "m1", amount: 2000,    currency: "USDD", type: "card_present" },
 ];
 
 // ─── Checks ──────────────────────────────────────────────────────
 
 function runSelfChecks(): void {
-  level("Part 1 \u2014 Event Ingestion & Active Counts", () => {
-    const sa = new SubscriptionAnalytics();
-    sa.ingest(EVENTS);
+  level("Part 1 \u2014 Fee Calculation", () => {
+    const result = calculateFees(TRANSACTIONS, FEE_SCHEDULE);
 
-    check("active count", sa.getActiveCount(), 3);
-    checkMap("active by plan", sa.getActiveByPlan(), { enterprise: 1, pro: 2 });
-    check("c1 plan", sa.getCustomerPlan("c1"), "enterprise");
-    check("c2 plan (canceled)", sa.getCustomerPlan("c2"), null);
-    check("c3 plan (canceled)", sa.getCustomerPlan("c3"), null);
-    check("c4 plan", sa.getCustomerPlan("c4"), "pro");
-    check("c5 plan (canceled)", sa.getCustomerPlan("c5"), null);
-    check("c6 plan (canceled)", sa.getCustomerPlan("c6"), null);
-    check("c7 plan", sa.getCustomerPlan("c7"), "pro");
-    check("unknown customer", sa.getCustomerPlan("c99"), null);
-
-    const sa2 = new SubscriptionAnalytics();
-    sa2.ingest(EVENTS.slice(0, 3));
-    check("partial active count", sa2.getActiveCount(), 3);
-    sa2.ingest(EVENTS.slice(3));
-    check("full active count after two ingests", sa2.getActiveCount(), 3);
-  });
-
-  level("Part 2 \u2014 MRR Calculations", () => {
-    const sa = new SubscriptionAnalytics();
-    sa.ingest(EVENTS);
-
-    check("current MRR", sa.getCurrentMRR(), 447);
-    checkMap("MRR by plan", sa.getMRRByPlan(), { enterprise: 249, pro: 198 });
-
-    const allTime = sa.getMRRMovements(0, ts("2025-01-01"));
-    check("all-time new", allTime.new, 563);
-    check("all-time expansion", allTime.expansion, 510);
-    check("all-time contraction", allTime.contraction, 150);
-    check("all-time churn", allTime.churn, 476);
-    check("all-time net", allTime.net, 447);
-
-    const jan = sa.getMRRMovements(ts("2024-01-01"), ts("2024-01-31"));
-    check("jan new", jan.new, 157);
-    check("jan expansion", jan.expansion, 0);
-    check("jan contraction", jan.contraction, 0);
-    check("jan churn", jan.churn, 0);
-    check("jan net", jan.net, 157);
-
-    const mar = sa.getMRRMovements(ts("2024-03-01"), ts("2024-03-31"));
-    check("mar new", mar.new, 99);
-    check("mar expansion", mar.expansion, 370);
-    check("mar contraction", mar.contraction, 150);
-    check("mar churn", mar.churn, 0);
-    check("mar net", mar.net, 319);
-  });
-
-  level("Part 3 \u2014 Cohort Analysis", () => {
-    const sa = new SubscriptionAnalytics();
-    sa.ingest(EVENTS);
-
-    const janCohort = sa.getRetention("2024-01");
-    check("jan cohort length", janCohort.length, 5);
-    check("jan cohort[0]", janCohort[0], 100);
-    check("jan cohort[1] (feb)", janCohort[1], 100);
-    check("jan cohort[2] (mar)", janCohort[2], 67);
-    check("jan cohort[3] (apr)", janCohort[3], 67);
-    check("jan cohort[4] (may)", janCohort[4], 33);
-
-    const febCohort = sa.getRetention("2024-02");
-    check("feb cohort length", febCohort.length, 4);
-    check("feb cohort[0]", febCohort[0], 100);
-    check("feb cohort[1] (mar)", febCohort[1], 100);
-    check("feb cohort[2] (apr)", febCohort[2], 100);
-    check("feb cohort[3] (may)", febCohort[3], 100);
-
-    check("empty cohort", sa.getRetention("2023-06"), []);
-
-    check("churn rate apr", sa.getChurnRate(ts("2024-04-01"), ts("2024-04-30")), 40);
-    check("churn rate jan (no active)", sa.getChurnRate(ts("2024-01-01"), ts("2024-01-31")), 0);
-    check("churn rate feb", sa.getChurnRate(ts("2024-02-01"), ts("2024-02-28")), 33);
-  });
-
-  level("Part 4 \u2014 Plan Migration Paths", () => {
-    const sa = new SubscriptionAnalytics();
-    sa.ingest(EVENTS);
-
-    const paths = sa.getUpgradePaths();
-    checkNestedMap("upgrade paths", paths, {
-      starter: { pro: 3 },
-      pro: { enterprise: 2 },
+    checkMap("merchant summaries", result, {
+      m1: { totalVolume: 58000,  totalFees: 1750, transactionCount: 4 },
+      m2: { totalVolume: 14700,  totalFees: 471,  transactionCount: 3 },
+      m3: { totalVolume: 260000, totalFees: 7205, transactionCount: 3 },
     });
 
-    const starterLifetime = ts("2024-02-20") - ts("2024-01-25");
-    check("avg lifetime starter", sa.getAverageLifetime("starter"), starterLifetime);
+    const m1 = result.get("m1")!;
+    check("m1 totalVolume", m1.totalVolume, 58000);
+    check("m1 totalFees", m1.totalFees, 1750);
+    check("m1 transactionCount", m1.transactionCount, 4);
 
-    const proLifetime = Math.round(((ts("2024-04-10") - ts("2024-03-05")) + (ts("2024-05-01") - ts("2024-02-15"))) / 2);
-    check("avg lifetime pro", sa.getAverageLifetime("pro"), proLifetime);
+    const m3 = result.get("m3")!;
+    check("m3 totalFees", m3.totalFees, 7205);
+  });
 
-    const enterpriseLifetime = ts("2024-04-01") - ts("2024-01-20");
-    check("avg lifetime enterprise", sa.getAverageLifetime("enterprise"), enterpriseLifetime);
+  level("Part 2 \u2014 Tiered Volume Discounts", () => {
+    const summaries = calculateFees(TRANSACTIONS, FEE_SCHEDULE);
+    const discounted = applyVolumeDiscounts(summaries, VOLUME_TIERS);
 
-    check("avg lifetime unknown", sa.getAverageLifetime("basic"), 0);
+    const m1 = discounted.get("m1")!;
+    check("m1 discountPercent", m1.discountPercent, 10);
+    check("m1 discountedFees", m1.discountedFees, 1575);
+
+    const m2 = discounted.get("m2")!;
+    check("m2 discountPercent", m2.discountPercent, 0);
+    check("m2 discountedFees", m2.discountedFees, 471);
+
+    const m3 = discounted.get("m3")!;
+    check("m3 discountPercent", m3.discountPercent, 20);
+    check("m3 discountedFees", m3.discountedFees, 5764);
+  });
+
+  level("Part 3 \u2014 Transaction Validation & Rejection", () => {
+    const result = processTransactions(TRANSACTIONS_WITH_INVALID, FEE_SCHEDULE, VOLUME_TIERS);
+
+    check("rejected count", result.rejected.length, 5);
+
+    check("t11 rejected", result.rejected[0], { id: "t11", reason: "invalid_amount" });
+    check("t12 rejected", result.rejected[1], { id: "t12", reason: "invalid_amount" });
+    check("t13 rejected", result.rejected[2], { id: "t13", reason: "invalid_currency" });
+    check("t14 rejected", result.rejected[3], { id: "t14", reason: "invalid_type" });
+    check("t15 rejected", result.rejected[4], { id: "t15", reason: "invalid_currency" });
+
+    const m1 = result.processed.get("m1")!;
+    check("m1 still correct after filtering", m1.discountedFees, 1575);
+  });
+
+  level("Part 4 \u2014 Settlement Report", () => {
+    const settlement = generateSettlement(TRANSACTIONS, FEE_SCHEDULE);
+
+    check("settlement length", settlement.length, 6);
+
+    check("entry 0", settlement[0], { merchant: "m1", currency: "EUR", grossVolume: 15000,  totalFees: 615,  netAmount: 14385 });
+    check("entry 1", settlement[1], { merchant: "m1", currency: "USD", grossVolume: 43000,  totalFees: 1135, netAmount: 41865 });
+    check("entry 2", settlement[2], { merchant: "m2", currency: "GBP", grossVolume: 4200,   totalFees: 194,  netAmount: 4006 });
+    check("entry 3", settlement[3], { merchant: "m2", currency: "USD", grossVolume: 10500,  totalFees: 277,  netAmount: 10223 });
+    check("entry 4", settlement[4], { merchant: "m3", currency: "EUR", grossVolume: 45000,  totalFees: 1785, netAmount: 43215 });
+    check("entry 5", settlement[5], { merchant: "m3", currency: "USD", grossVolume: 215000, totalFees: 5420, netAmount: 209580 });
   });
 }
 
 function main(): void {
-  console.log("\nSubscription Analytics Engine (Solution)\n");
+  console.log("\nPayment Fee Calculator (Solution)\n");
   runSelfChecks();
   const total = _passed + _failed;
   console.log(`\n${_passed}/${total} passed`);

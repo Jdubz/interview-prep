@@ -7,10 +7,7 @@ actual Integration Exercise format: you're given an existing
 server and spec, and need to add functionality + tests.
 
 Run: npx tsx drill_06_express_api.ts
-Requires: npm install express stripe
-
-If express/stripe aren't installed, the drill installs them
-automatically (see bottom of file).
+No external dependencies — uses built-in Router simulation.
 
 Target time: 40 minutes for all 4 levels.
 
@@ -46,6 +43,10 @@ Level 2 — Middleware & Validation
 
   requestLogger: Logs method, path, status, and duration (ms)
     to the provided logs array. Runs on ALL routes.
+    NOTE: The Router's next() only sets a flag — it does NOT run
+    downstream handlers synchronously. To capture the final status,
+    log AFTER the route handler has set res.statusCode (e.g., wrap
+    the route handlers or log in a post-processing step).
 
   apiKeyAuth: Reads "x-api-key" header. If missing or doesn't
     match the expected key, return 401 + { error: "Unauthorized" }.
@@ -97,11 +98,14 @@ Level 4 — Webhook Handler + Tests
       "charge.succeeded" → store in processed events
       "charge.refunded"  → store in processed events
       "charge.failed"    → store in processed events
-    - Deduplicate by event id
+    - For unrecognized event types, return 200 (acknowledge but don't store)
+    - Deduplicate by event id — return 200 for already-seen events
     - Return 200 + { received: true }
 
-  getProcessedWebhooks(): WebhookEvent[]
-    Returns all processed webhook events in order.
+  The createRouter function should return an object with both
+  the router AND a getProcessedWebhooks() function:
+    return { router, getProcessedWebhooks }
+  getProcessedWebhooks() returns all stored webhook events in order.
 
   Write tests (using the built-in test harness) for:
     - Creating a user and retrieving it
@@ -283,50 +287,8 @@ type User = {
   created_at: number;
 };
 
-// Stub — replace with your implementation
-function createApp(config: {
-  stripeApi: FakeStripeAPI;
-  apiKey: string;
-  logs: LogEntry[];
-}): any {
-  throw new Error("TODO: implement createApp");
-}
-
-// ─── Test Harness (simulates HTTP without needing a running server) ──
-
-class TestClient {
-  private app: any;
-  private users: Map<string, User> = new Map();
-  private nextUserId = 1;
-  private processedWebhooks: WebhookEvent[] = [];
-  private processedEventIds = new Set<string>();
-
-  constructor(
-    private stripeApi: FakeStripeAPI,
-    private apiKey: string,
-    private logs: LogEntry[],
-  ) {
-    // We'll test by directly calling the createApp function
-    // and simulating requests. For this drill, we use a
-    // simplified request simulator instead of supertest.
-  }
-
-  // Simulated request — this is what you'd use supertest for
-  // in a real integration test. Here we just call the function directly.
-  async request(
-    method: string,
-    path: string,
-    body?: Record<string, unknown>,
-    headers?: Record<string, string>,
-  ): Promise<{ status: number; body: any }> {
-    // This is a simplified simulation. In the real interview,
-    // you'd use the Express app with supertest or similar.
-    throw new Error("TODO: implement via createApp");
-  }
-}
-
 // ─── Self-Checks ───────────────────────────────────────────────
-// Since this drill requires express (which may not be installed),
+// Tests use the built-in Router simulation — no express dependency needed.
 // we use a pure-TypeScript simulation that tests the same patterns.
 // The logic is identical to what you'd write with Express.
 
@@ -521,17 +483,11 @@ function createRouter(config: {
   // let nextId = 1;
   //
   // // Logging middleware
-  // router.use(async (req, res, next) => {
-  //   const start = Date.now();
-  //   next();
-  //   config.logs.push({
-  //     method: req.method,
-  //     path: req.path,
-  //     status: res.statusCode,
-  //     durationMs: Date.now() - start,
-  //   });
-  // });
-  //
+  // Hint: The Router's global middleware runs BEFORE the route handler.
+  // To capture the final status code for logging, you'll need to
+  // record the start time here, then log after handle() completes.
+  // One approach: have the middleware just save start time on req,
+  // then do the logging in a wrapper around the router's handle() call.
   // // Auth middleware
   // router.use((req, res, next) => {
   //   if (req.path === "/health") return next();
@@ -739,13 +695,11 @@ async function runSelfChecks(): Promise<void> {
   await level("Level 4 — Webhook Handler + Tests", async () => {
     const router = createRouter({ stripeApi, apiKey, logs });
 
-    // Valid webhook
+    // Valid webhook — request() helper computes rawBody from the body for signature verification
     const evt = stripeApi.makeWebhookEvent("charge.succeeded", { id: "ch_0001", amount: 2000 });
-    const rawBody = JSON.stringify({ id: evt.id, type: evt.type, data: evt.data });
     const whRes = await request(router, "POST", "/webhooks/stripe",
       { id: evt.id, type: evt.type, data: evt.data },
       { "stripe-signature": evt.signature });
-    // Note: rawBody needs to be available for signature verification
     check("webhook 200", whRes.status, 200);
     check("webhook received", whRes.body.received, true);
 

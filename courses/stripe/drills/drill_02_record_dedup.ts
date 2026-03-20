@@ -31,7 +31,7 @@ Level 2 — Fuzzy Match
     Compare all pairs of records. Return pairs where similarity
     score >= threshold.
 
-    Similarity score (0-100) is the average of:
+    Similarity score (0-100) is the truncated integer average (Math.floor) of:
       - email: 100 if equal (case-insensitive), else 0
       - name:  100 if equal (case-insensitive),
                50 if one contains the other, else 0
@@ -239,14 +239,17 @@ function runSelfChecks(): void {
       { id: "r4", email: "carol@example.com", name: "Bob", company: "Globex" },
     ]);
     // r1-r2 without rules: email=100, name=0, company=100 → 66 (would merge at threshold 50)
-    // Force distinct
+    // r3-r4 without rules: email=0, name=100, company=100 → 66 (also merges at threshold 50)
+    // Force distinct on r1-r2: blocks that pair, but r3-r4 still merge
     d.addMergeRule("email", "r1", "r2", "distinct");
-    check("distinct blocks merge", d.mergeWithRules(50), []);
+    check("distinct blocks r1-r2 but r3-r4 still merge", d.mergeWithRules(50), [["r3", "r4"]]);
 
-    // r3-r4: email=0, name=100, company=100 → 66 normally
-    // Force match on email → email becomes 100, name=100, company=100 → 100
+    // r3-r4 at threshold 70: score 66 < 70, so they DON'T merge without help
+    check("r3-r4 below threshold 70", d.mergeWithRules(70), []);
+
+    // Force match on email for r3-r4 → email becomes 100, avg = (100+100+100)/3 = 100
     d.addMergeRule("email", "r3", "r4", "match");
-    check("match forces merge", d.mergeWithRules(50), [["r3", "r4"]]);
+    check("match boosts r3-r4 above threshold 70", d.mergeWithRules(70), [["r3", "r4"]]);
   });
 }
 

@@ -1,55 +1,58 @@
-# Stripe TSE Interview Prep
+# Stripe TSE Onsite Prep — March 25, 2026
 
-Comprehensive preparation for the Stripe Technical Solutions Engineer onsite interview. Covers both Stripe product knowledge and interview-specific strategy.
+## Your Interview
 
-## Product Knowledge (Lessons 01-04)
+| Time (PDT) | Round | Interviewer | Duration |
+|---|---|---|---|
+| 11:00–11:45 | Programming Exercise | Nicholas Xavier | 45 min |
+| 11:45–12:45 | Experience & Goals | Ali Riaz | 60 min |
+| 1:30–2:15 | Users First & Curious | Tyler Martin | 45 min |
+| 2:30–3:30 | Integration | Adam Fuller | 60 min |
 
-| # | File | Topic |
-|---|------|-------|
-| 01 | `01-api-fundamentals-and-core-objects.md` | API design, authentication, core objects, idempotency, metadata, webhooks |
-| 02 | `02-payments-deep-dive.md` | PaymentIntents lifecycle, PaymentMethods, SetupIntents, Checkout, refunds, disputes |
-| 03 | `03-billing-and-subscriptions.md` | Products, Prices, Subscriptions lifecycle, Invoices, proration, metered billing, Billing Portal |
-| 04 | `04-connect-and-platform-payments.md` | Account types, charge models, onboarding, application fees, transfers, payouts |
+All on Zoom. Same link between rounds. AI tools strictly prohibited.
 
-Each lesson has: **Concepts** → **API patterns** → **Decision frameworks** → **Check yourself** questions. Read sequentially; 01-02 are highest priority.
+## Course Structure
 
-## Onsite Interview Guide (Lesson 05)
+### Knowledge (read these)
 
-| # | File | Topic |
-|---|------|-------|
-| 05 | `05-onsite-interview-guide.md` | All 4 interview rounds, strategies, practice problems, 7-day prep plan |
+| File | What | Priority |
+|---|---|---|
+| `05-onsite-guide.md` | **Start here.** Round-by-round strategy, prep plan, day-of checklist | Read first |
+| `01-api-fundamentals-and-core-objects.md` | Stripe API design, auth, idempotency, webhooks | High |
+| `02-payments-deep-dive.md` | PaymentIntents, refunds, disputes | High |
+| `03-billing-and-subscriptions.md` | Subscriptions, invoices, proration | Medium |
+| `04-connect-and-platform-payments.md` | Connect, multi-party payments | Medium |
 
-Covers: Programming Exercise, Integration Exercise, Bug Squash, Behavioral rounds. Includes Stripe operating principles, questions for interviewers, environment setup checklist, and a day-by-day study schedule.
+### Drills (code these)
 
-## Drills (in `drills/`)
+Run with `cd drills && make d1` or `npx tsx drills/drill_01_rate_limiter.ts`.
 
-Run with `cd drills && make d1`, `make d2`, etc. Or directly: `npx tsx drills/drill_01_rate_limiter.ts`
+| Drill | Pattern | Target | Preps for |
+|---|---|---|---|
+| `toolbox.ts` | Copy-paste patterns: Maps, sorting, HTTP, union-find | Review | All rounds |
+| `drill_01_rate_limiter.ts` | Fixed/sliding window, token bucket | 30 min | Programming |
+| `drill_02_record_dedup.ts` | Exact/fuzzy match, transitive merge | 30 min | Programming |
+| `drill_03_transaction_ledger.ts` | Double-entry, history, batch + rollback | 30 min | Programming |
+| `drill_04_log_sanitizer.ts` | Regex redaction, streaming | 25 min | Programming |
+| `drill_05_api_client.ts` | CRUD, pagination, retry, webhooks | 30 min | Integration |
+| `drill_06_express_api.ts` | Routes, middleware, Stripe API, testing | 35 min | Integration |
+| `drill_07_tiered_pricing.ts` | Flat/tiered/base+overflow pricing, multi-product | 30 min | Programming |
+| `drill_08_currency_conversion.ts` | Graph BFS/DFS, multi-hop rates, best path | 30 min | Programming |
+| `drill_09_string_parsing.ts` | Accept-Language, q-values, invoice reconciliation | 30 min | Programming |
+| `drill_10_event_scheduler.ts` | Subscription notifications, plan changes, store closing penalty | 30 min | Programming |
 
-| # | File | Pattern | Target |
-|---|------|---------|--------|
-| -- | `toolbox.ts` | **Speed reference** — copy-paste-ready patterns for Maps, sorting, parsing, rate limiting, union-find, HTTP clients, state machines, undo stacks | Review before each drill |
-| 01 | `drill_01_rate_limiter.ts` | Fixed window, sliding window, multi-tier, token bucket | 35 min |
-| 02 | `drill_02_record_dedup.ts` | Exact match, fuzzy scoring, transitive merge (union-find), conflict rules | 35 min |
-| 03 | `drill_03_transaction_ledger.ts` | Double-entry transfers, history queries, rules engine, batch + rollback | 35 min |
-| 04 | `drill_04_log_sanitizer.ts` | Regex redaction, multi-pattern, structured deep-clone, streaming with partial buffers | 30 min |
-| 05 | `drill_05_api_client.ts` | **Integration Exercise prep** — CRUD, pagination, idempotency/retry, webhook processing | 35 min |
-| 06 | `drill_06_express_api.ts` | **Integration Exercise prep** — Express routes, auth middleware, Stripe charges/refunds/webhooks, testing | 40 min |
+### Simulations (timed practice)
 
-Each drill has 4 levels with self-checks. Levels build on each other. All stubs throw `TODO:` — implement and run to verify.
+| Directory | Simulates | Timer | Notes |
+|---|---|---|---|
+| `projects/01-programming-sim/` | Programming Exercise (Nicholas Xavier) | 40 min | Payment fee calculator — tiered pricing, validation, settlement |
+| `projects/02-experience-and-goals/` | Experience & Goals (Ali Riaz) | — | Project deep dives, "Why Stripe?", interviewer questions |
+| `projects/03-users-first-and-curious/` | Users First & Curious (Tyler Martin) | — | User empathy + curiosity story bank, 6 STAR prompts |
+| `projects/04-integration/` | Integration (Adam Fuller) | 50 min | Add payments/refunds/webhooks to existing codebase |
 
-## Interview Simulations (in `projects/`)
+### Reference
 
-Full timed simulations — one per interview round. See `projects/README.md` for detailed usage.
-
-| # | Directory | Simulates | Time | What You Do |
-|---|-----------|-----------|------|-------------|
-| 01 | `projects/01-programming-sim/` | Programming Exercise | 50 min | Read spec, build a Subscription Analytics Engine in 4 parts (49 tests) |
-| 02 | `projects/02-integration-sim/` | Integration Exercise | 50 min | Read spec + existing 600-line codebase, add payment/refund/webhook routes (56 tests) |
-| 03 | `projects/03-bug-squash-sim/` | Bug Squash | 50 min | Run failing tests, find and fix 5 bugs in an EventBus library (12 failing → 0) |
-| 04 | `projects/04-behavioral-prep/` | Behavioral | 70 min | Fill-in workbook: STAR stories, project deep-dives, Stripe principles, interviewer questions |
-
-Each project has a README (your spec), a starter or buggy file, and a reference solution. Do NOT open solutions until done.
-
-## Reference
-
-- `TSE_Prep_Document.pdf` — Official Stripe interview prep document
+| File | What |
+|---|---|
+| `docs/TSE_Prep_Document.pdf` | Official Stripe interview prep document |
+| `docs/What to Expect_ Video Interviews.pdf` | Official Stripe video interview guide |

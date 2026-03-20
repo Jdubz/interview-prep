@@ -25,7 +25,7 @@ Level 1 — Fixed Window
 Level 2 — Sliding Window Log
 
   allowSliding(clientId: string, timestamp: number): boolean
-    Uses a sliding window: count requests in [timestamp - windowMs, timestamp).
+    Uses a sliding window: count requests in (timestamp - windowMs, timestamp].
     More accurate than fixed window but uses more memory.
 
   getRequestCount(clientId: string, timestamp: number): number

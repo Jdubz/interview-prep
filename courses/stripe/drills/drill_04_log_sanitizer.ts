@@ -200,7 +200,8 @@ function runSelfChecks(): void {
 
     const result = s.sanitizeStructured(input) as any;
     check("user unchanged", result.user, "alice");
-    check("email sanitized", result.email, "[FILTERED]");
+    // "email" is NOT a sensitive field name — it's processed by the registered email pattern
+    check("email sanitized by pattern", result.email, "[REDACTED:email]");
     check("password filtered", result.password, "[FILTERED]");
     check("api_key filtered", result.api_key, "[FILTERED]");
     check("nested token filtered", result.nested.token, "[FILTERED]");

@@ -1,4 +1,4 @@
-.PHONY: toolbox d1 d2 d3 d4 d5 d6
+.PHONY: toolbox d1 d2 d3 d4 d5 d6 d7 d8 d9 d10
 
 toolbox:
 	npx tsx toolbox.ts
@@ -21,4 +21,16 @@ d5:
 d6:
 	npx tsx drill_06_express_api.ts
 
-all: d1 d2 d3 d4 d5 d6
+d7:
+	npx tsx drill_07_tiered_pricing.ts
+
+d8:
+	npx tsx drill_08_currency_conversion.ts
+
+d9:
+	npx tsx drill_09_string_parsing.ts
+
+d10:
+	npx tsx drill_10_event_scheduler.ts
+
+all: d1 d2 d3 d4 d5 d6 d7 d8 d9 d10

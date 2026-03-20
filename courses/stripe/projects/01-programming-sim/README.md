@@ -1,12 +1,10 @@
-# Stripe Programming Exercise Simulation
+# Programming Exercise Simulation
 
-## Subscription Analytics Engine
+## Payment Fee Calculator
 
-**Time limit: 50 minutes. Set a timer now.**
+**Timer: 40 minutes.** Your actual round is 45 min. Train tight.
 
-Read this entire spec before writing any code. Talk out loud as you work — explain your approach, trade-offs, and decisions. This simulates the paired coding interview where your interviewer is listening.
-
-Run your solution with:
+Read this entire spec before writing any code. Talk out loud — explain your approach, trade-offs, and decisions.
 
 ```
 npx tsx starter.ts
@@ -18,155 +16,188 @@ Do **NOT** open `solution.ts` until you have completed your attempt.
 
 ## Scenario
 
-You are building an analytics engine for Stripe's subscription billing system. The engine processes a stream of subscription lifecycle events and answers questions about the current state, revenue metrics, customer retention, and migration patterns.
+You are building a fee calculation engine for Stripe's merchant payment processing. Merchants pay processing fees on every transaction, with rates that vary by transaction type. High-volume merchants earn discounted rates.
 
-A subscription event looks like this:
+All monetary values are in **cents** (integers only — no floating point).
+
+---
+
+## Data Types
 
 ```typescript
-type SubscriptionEvent = {
-  id: string;           // unique event id
-  customerId: string;   // customer this event belongs to
-  plan: string;         // plan name, e.g. "starter", "pro", "enterprise"
-  action: "created" | "upgraded" | "downgraded" | "canceled" | "renewed";
-  timestamp: number;    // unix timestamp in milliseconds
-  mrr: number;          // monthly recurring revenue at this point
+type Transaction = {
+  id: string;         // unique transaction id
+  merchant: string;   // merchant id
+  amount: number;     // transaction amount in cents (e.g. 10000 = $100.00)
+  currency: string;   // 3-letter uppercase currency code, e.g. "USD"
+  type: string;       // transaction type, e.g. "card_present"
+};
+
+type FeeRule = {
+  type: string;         // matches Transaction.type
+  flatFee: number;      // flat fee in cents (e.g. 30 = $0.30)
+  percentFee: number;   // fee rate in basis points (e.g. 290 = 2.90%)
+};
+
+type VolumeTier = {
+  upTo: number;           // volume ceiling in cents (use Infinity for the last tier)
+  discountPercent: number; // discount applied to total fees (e.g. 10 = 10%)
 };
 ```
 
-Key semantics:
-- `created` — a new subscription starts. The customer is now active on `plan` with `mrr`.
-- `upgraded` — customer moves to a higher plan. `plan` and `mrr` reflect the **new** values.
-- `downgraded` — customer moves to a lower plan. `plan` and `mrr` reflect the **new** values.
-- `canceled` — subscription ends. `mrr` is the MRR that was lost.
-- `renewed` — subscription renews on the same plan. `mrr` stays the same (or may change).
-
-A customer has at most one active subscription at a time.
-
-Events are ingested in chronological order.
-
 ---
 
-## Part 1 — Event Ingestion & Active Counts (15 min)
+## Part 1 — Fee Calculation (12 min)
 
 Implement:
 
-- **`ingest(events: SubscriptionEvent[]): void`** — process an array of events into your internal data structures. May be called multiple times; events should accumulate.
+- **`calculateFees(transactions, feeSchedule): Map<string, MerchantSummary>`**
 
-- **`getActiveCount(): number`** — return the number of currently active subscriptions.
+For each transaction, calculate: `fee = flatFee + Math.ceil(amount * percentFee / 10000)`
 
-- **`getActiveByPlan(): Map<string, number>`** — return a map from plan name to the number of active subscriptions on that plan.
+Return a `Map<merchantId, MerchantSummary>` where:
 
-- **`getCustomerPlan(customerId: string): string | null`** — return the customer's current plan name, or `null` if they have no active subscription (canceled or never existed).
-
-### Examples
-
+```typescript
+type MerchantSummary = {
+  totalVolume: number;       // sum of transaction amounts
+  totalFees: number;         // sum of calculated fees
+  transactionCount: number;  // number of transactions
+};
 ```
-Events:
-  { customerId: "c1", plan: "starter", action: "created", mrr: 29 }
-  { customerId: "c2", plan: "pro",     action: "created", mrr: 99 }
-  { customerId: "c1", plan: "pro",     action: "upgraded", mrr: 99 }
-  { customerId: "c3", plan: "starter", action: "created", mrr: 29 }
-  { customerId: "c2", plan: "pro",     action: "canceled", mrr: 99 }
-
-getActiveCount()        => 2
-getActiveByPlan()       => Map { "pro" => 1, "starter" => 1 }
-getCustomerPlan("c1")   => "pro"
-getCustomerPlan("c2")   => null
-```
-
----
-
-## Part 2 — MRR Calculations (15 min)
-
-Implement:
-
-- **`getCurrentMRR(): number`** — return the total MRR across all active subscriptions.
-
-- **`getMRRByPlan(): Map<string, number>`** — return MRR broken down by plan name.
-
-- **`getMRRMovements(startTs: number, endTs: number): MRRMovements`** — return a breakdown of MRR changes within the time window `[startTs, endTs]` (inclusive on both ends):
-  - `new` — total MRR from `created` events
-  - `expansion` — total MRR **increase** from `upgraded` events (new MRR minus old MRR)
-  - `contraction` — total MRR **decrease** from `downgraded` events (old MRR minus new MRR)
-  - `churn` — total MRR lost from `canceled` events
-  - `net` — `new + expansion - contraction - churn`
-
-### Examples
-
-```
-Given the events above:
-  getCurrentMRR()  => 128   (c1: 99 + c3: 29)
-  getMRRByPlan()   => Map { "pro" => 99, "starter" => 29 }
-
-  getMRRMovements(0, Infinity) =>
-    { new: 157, expansion: 70, contraction: 0, churn: 99, net: 128 }
-    // new = 29 + 99 + 29 = 157
-    // expansion = 99 - 29 = 70 (c1 upgraded from 29 to 99)
-    // churn = 99 (c2 canceled)
-    // net = 157 + 70 - 0 - 99 = 128
-```
-
----
-
-## Part 3 — Cohort Analysis (12 min)
-
-Implement:
-
-- **`getRetention(cohortMonth: string): number[]`** — given a month like `"2024-01"`, find all customers whose subscription was `created` in that month. Return an array of retention rates for each subsequent month.
-  - Index 0 = the cohort month itself (always 100 if the cohort is non-empty).
-  - Index 1 = the next month, etc.
-  - Rate = `Math.round((active at start of month N / total in cohort) * 100)`
-  - A customer is "active at start of month N" if they have not been canceled before the start of month N.
-  - Continue through the last month that contains any event in the system.
-  - Return `[]` if no customers were created in that month.
-
-- **`getChurnRate(startTs: number, endTs: number): number`** — percentage of subscriptions that were canceled in `[startTs, endTs]`, relative to the number of active subscriptions at `startTs` (before processing any events in the window). Rounded to nearest integer.
-  - Return 0 if there are no active subscriptions at `startTs`.
-
----
-
-## Part 4 — Plan Migration Paths (8 min, stretch goal)
-
-Implement:
-
-- **`getUpgradePaths(): Map<string, Map<string, number>>`** — for each plan, count how many customers upgraded **from** that plan **to** each other plan. Based on `upgraded` events.
 
 ### Example
 
 ```
-If 3 customers upgraded from "starter" to "pro" and 1 from "pro" to "enterprise":
-  Map {
-    "starter" => Map { "pro" => 3 },
-    "pro"     => Map { "enterprise" => 1 }
-  }
+Fee schedule:
+  card_present:     flatFee = 10, percentFee = 200  (2.00%)
+  card_not_present: flatFee = 30, percentFee = 290  (2.90%)
+
+Transactions:
+  { id: "t1", merchant: "m1", amount: 10000, currency: "USD", type: "card_present" }
+  { id: "t2", merchant: "m1", amount: 25000, currency: "USD", type: "card_not_present" }
+
+Fee for t1: 10 + ceil(10000 * 200 / 10000) = 10 + 200 = 210
+Fee for t2: 30 + ceil(25000 * 290 / 10000) = 30 + 725 = 755
+
+Result: Map { "m1" => { totalVolume: 35000, totalFees: 965, transactionCount: 2 } }
 ```
 
-- **`getAverageLifetime(plan: string): number`** — average time in milliseconds between creation and cancellation for customers who were on `plan` when they canceled. Return 0 if no customers on that plan have canceled.
+---
+
+## Part 2 — Tiered Volume Discounts (13 min)
+
+Implement:
+
+- **`applyVolumeDiscounts(summaries, tiers): Map<string, DiscountedSummary>`**
+
+Each merchant's total fees are discounted based on their `totalVolume`. The discount tier is determined by volume, not per-transaction.
+
+```typescript
+type DiscountedSummary = MerchantSummary & {
+  discountPercent: number;  // the discount tier that applied
+  discountedFees: number;   // fees after discount
+};
+```
+
+Discount formula: `discountedFees = totalFees - Math.floor(totalFees * discountPercent / 100)`
+
+Tiers are sorted by `upTo` ascending. A merchant falls into the tier where `totalVolume <= upTo`.
+
+### Example
+
+```
+Tiers:
+  { upTo: 50000,   discountPercent: 0 }
+  { upTo: 200000,  discountPercent: 10 }
+  { upTo: Infinity, discountPercent: 20 }
+
+Merchant with totalVolume = 58000, totalFees = 1750:
+  Volume 58000 > 50000, 58000 <= 200000 => 10% discount
+  discountedFees = 1750 - Math.floor(1750 * 10 / 100) = 1750 - 175 = 1575
+```
 
 ---
 
-## Evaluation Criteria
+## Part 3 — Transaction Validation & Rejection (10 min)
 
-This is what Stripe interviewers are looking for:
+Implement:
 
-1. **Communication** — Did you talk through your approach before coding? Did you ask clarifying questions? Did you explain trade-offs?
-2. **Code quality** — Is the code clean, readable, and well-structured? Good variable names? Minimal duplication?
-3. **Problem decomposition** — Did you break the problem into clear steps? Did you identify the right data structures?
-4. **Correctness** — Do the self-checks pass? Did you handle edge cases?
-5. **Speed** — How far did you get in 50 minutes? Completing Parts 1-3 is a strong result. Part 4 is a stretch goal.
-6. **Testing instinct** — Did you think about edge cases beyond the provided checks?
+- **`processTransactions(transactions, feeSchedule, tiers): ProcessingResult`**
 
-### Pacing guide
+Before calculating fees, validate each transaction:
+
+1. `amount` must be > 0 and <= 999999
+2. `currency` must be exactly 3 uppercase letters (A-Z)
+3. `type` must exist in the fee schedule
+
+Invalid transactions are **rejected** — they do not count toward volume or fees.
+
+```typescript
+type RejectedTransaction = {
+  id: string;
+  reason: string;  // e.g. "invalid_amount", "invalid_currency", "invalid_type"
+};
+
+type ProcessingResult = {
+  processed: Map<string, DiscountedSummary>;
+  rejected: RejectedTransaction[];
+};
+```
+
+Rejection reasons (use these exact strings):
+- `"invalid_amount"` — amount <= 0 or amount > 999999
+- `"invalid_currency"` — not exactly 3 uppercase A-Z letters
+- `"invalid_type"` — type not found in fee schedule
+
+If a transaction has multiple issues, return the **first** reason in the order above.
+
+---
+
+## Part 4 — Settlement Report (5 min, stretch)
+
+Implement:
+
+- **`generateSettlement(transactions, feeSchedule): SettlementEntry[]`**
+
+Group **valid** transactions by `(merchant, currency)`. For each group:
+
+```typescript
+type SettlementEntry = {
+  merchant: string;
+  currency: string;
+  grossVolume: number;   // sum of amounts
+  totalFees: number;     // sum of fees
+  netAmount: number;     // grossVolume - totalFees
+};
+```
+
+Return sorted by `merchant` ascending, then `currency` ascending.
+
+**Note:** This function only filters out transactions with invalid types (type not in fee schedule). It does NOT apply the full validation from Part 3 — only type checking is needed to look up fee rates.
+
+### Example
+
+```
+Transactions for merchant "m1":
+  { amount: 10000, currency: "USD", type: "card_present" }   => fee 210
+  { amount: 15000, currency: "EUR", type: "international" }  => fee 615
+  { amount: 25000, currency: "USD", type: "card_not_present" } => fee 755
+
+Settlement:
+  { merchant: "m1", currency: "EUR", grossVolume: 15000, totalFees: 615, netAmount: 14385 }
+  { merchant: "m1", currency: "USD", grossVolume: 35000, totalFees: 965, netAmount: 34035 }
+```
+
+---
+
+## Pacing
 
 | Part | Target | Cumulative |
-|------|--------|------------|
-| 1    | 15 min | 15 min     |
-| 2    | 15 min | 30 min     |
-| 3    | 12 min | 42 min     |
-| 4    |  8 min | 50 min     |
+|---|---|---|
+| Read spec + design | 3 min | 3 min |
+| Part 1 | 12 min | 15 min |
+| Part 2 | 13 min | 28 min |
+| Part 3 | 10 min | 38 min |
+| Part 4 | 5 min | 43 min |
 
-If you are stuck on a part for more than 5 minutes past its target, move on. Partial progress on later parts is better than a perfect solution to an earlier part.
-
----
-
-**Start your timer. Good luck.**
+Parts 1-2 clean is a strong result. If stuck 3+ min past target, move on.

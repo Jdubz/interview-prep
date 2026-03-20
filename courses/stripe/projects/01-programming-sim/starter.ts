@@ -1,9 +1,9 @@
 /*
 Stripe Programming Exercise Simulation
 ───────────────────────────────────────
-Subscription Analytics Engine
+Payment Fee Calculator
 
-Time limit: 50 minutes. Set a timer now.
+Time limit: 40 minutes. Set a timer now.
 
 Read the README.md for the full problem spec.
 Run with: npx tsx starter.ts
@@ -12,77 +12,89 @@ Do NOT open solution.ts until you are done.
 
 // ─── Types ───────────────────────────────────────────────────────
 
-export type SubscriptionEvent = {
+export type Transaction = {
   id: string;
-  customerId: string;
-  plan: string;
-  action: "created" | "upgraded" | "downgraded" | "canceled" | "renewed";
-  timestamp: number;
-  mrr: number;
+  merchant: string;
+  amount: number;
+  currency: string;
+  type: string;
 };
 
-export type MRRMovements = {
-  new: number;
-  expansion: number;
-  contraction: number;
-  churn: number;
-  net: number;
+export type FeeRule = {
+  type: string;
+  flatFee: number;
+  percentFee: number;
 };
 
-// ─── Analytics Engine ────────────────────────────────────────────
+export type VolumeTier = {
+  upTo: number;
+  discountPercent: number;
+};
 
-export class SubscriptionAnalytics {
-  constructor() {
-    throw new Error("TODO: implement constructor");
-  }
+export type MerchantSummary = {
+  totalVolume: number;
+  totalFees: number;
+  transactionCount: number;
+};
 
-  // Part 1 — Event Ingestion & Active Counts
-  ingest(events: SubscriptionEvent[]): void {
-    throw new Error("TODO: implement ingest");
-  }
+export type DiscountedSummary = MerchantSummary & {
+  discountPercent: number;
+  discountedFees: number;
+};
 
-  getActiveCount(): number {
-    throw new Error("TODO: implement getActiveCount");
-  }
+export type RejectedTransaction = {
+  id: string;
+  reason: string;
+};
 
-  getActiveByPlan(): Map<string, number> {
-    throw new Error("TODO: implement getActiveByPlan");
-  }
+export type ProcessingResult = {
+  processed: Map<string, DiscountedSummary>;
+  rejected: RejectedTransaction[];
+};
 
-  getCustomerPlan(customerId: string): string | null {
-    throw new Error("TODO: implement getCustomerPlan");
-  }
+export type SettlementEntry = {
+  merchant: string;
+  currency: string;
+  grossVolume: number;
+  totalFees: number;
+  netAmount: number;
+};
 
-  // Part 2 — MRR Calculations
-  getCurrentMRR(): number {
-    throw new Error("TODO: implement getCurrentMRR");
-  }
+// ─── Part 1 — Fee Calculation ────────────────────────────────────
 
-  getMRRByPlan(): Map<string, number> {
-    throw new Error("TODO: implement getMRRByPlan");
-  }
+export function calculateFees(
+  transactions: Transaction[],
+  feeSchedule: FeeRule[],
+): Map<string, MerchantSummary> {
+  throw new Error("TODO: implement calculateFees");
+}
 
-  getMRRMovements(startTs: number, endTs: number): MRRMovements {
-    throw new Error("TODO: implement getMRRMovements");
-  }
+// ─── Part 2 — Tiered Volume Discounts ────────────────────────────
 
-  // Part 3 — Cohort Analysis
-  getRetention(cohortMonth: string): number[] {
-    throw new Error("TODO: implement getRetention");
-  }
+export function applyVolumeDiscounts(
+  summaries: Map<string, MerchantSummary>,
+  tiers: VolumeTier[],
+): Map<string, DiscountedSummary> {
+  throw new Error("TODO: implement applyVolumeDiscounts");
+}
 
-  getChurnRate(startTs: number, endTs: number): number {
-    throw new Error("TODO: implement getChurnRate");
-  }
+// ─── Part 3 — Transaction Validation & Rejection ─────────────────
 
-  // Part 4 — Plan Migration Paths
-  getUpgradePaths(): Map<string, Map<string, number>> {
-    throw new Error("TODO: implement getUpgradePaths");
-  }
+export function processTransactions(
+  transactions: Transaction[],
+  feeSchedule: FeeRule[],
+  tiers: VolumeTier[],
+): ProcessingResult {
+  throw new Error("TODO: implement processTransactions");
+}
 
-  getAverageLifetime(plan: string): number {
-    throw new Error("TODO: implement getAverageLifetime");
-  }
+// ─── Part 4 — Settlement Report ──────────────────────────────────
+
+export function generateSettlement(
+  transactions: Transaction[],
+  feeSchedule: FeeRule[],
+): SettlementEntry[] {
+  throw new Error("TODO: implement generateSettlement");
 }
 
 // ─── Self-Checks (do not edit below this line) ──────────────────
@@ -120,29 +132,6 @@ function checkMap(label: string, actual: Map<string, unknown>, expected: Record<
   }
 }
 
-function checkNestedMap(
-  label: string,
-  actual: Map<string, Map<string, number>>,
-  expected: Record<string, Record<string, number>>,
-): void {
-  const actualObj: Record<string, Record<string, number>> = {};
-  for (const [k, v] of actual) {
-    actualObj[k] = {};
-    for (const [k2, v2] of v) actualObj[k][k2] = v2;
-  }
-  const a = JSON.stringify(actualObj, Object.keys(actualObj).sort());
-  const e = JSON.stringify(expected, Object.keys(expected).sort());
-  if (a === e) {
-    _passed++;
-    console.log(`  \u2713 ${label}`);
-  } else {
-    _failed++;
-    console.log(`  \u2717 ${label}`);
-    console.log(`    expected: ${e}`);
-    console.log(`         got: ${a}`);
-  }
-}
-
 function level(name: string, fn: () => void): void {
   console.log(name);
   try {
@@ -159,261 +148,161 @@ function level(name: string, fn: () => void): void {
 }
 
 // ─── Test Data ───────────────────────────────────────────────────
-//
-// Timeline (all timestamps in ms):
-//   2024-01-15  c1 created starter $29
-//   2024-01-20  c2 created pro $99
-//   2024-01-25  c3 created starter $29
-//   2024-02-01  c4 created enterprise $249
-//   2024-02-10  c1 upgraded to pro $99
-//   2024-02-15  c5 created starter $29
-//   2024-02-20  c3 canceled starter $29
-//   2024-03-01  c2 upgraded to enterprise $249
-//   2024-03-05  c6 created pro $99
-//   2024-03-10  c1 upgraded to enterprise $249
-//   2024-03-15  c5 upgraded to pro $99
-//   2024-03-20  c4 downgraded to pro $99
-//   2024-04-01  c2 canceled enterprise $249
-//   2024-04-10  c6 canceled pro $99
-//   2024-04-15  c7 created starter $29
-//   2024-04-20  c1 renewed enterprise $249
-//   2024-05-01  c5 canceled pro $99
-//   2024-05-10  c7 upgraded to pro $99
 
-function ts(dateStr: string): number {
-  return new Date(dateStr + "T00:00:00Z").getTime();
-}
+const FEE_SCHEDULE: FeeRule[] = [
+  { type: "card_present",     flatFee: 10, percentFee: 200 },  // 2.00%
+  { type: "card_not_present", flatFee: 30, percentFee: 290 },  // 2.90%
+  { type: "international",    flatFee: 30, percentFee: 390 },  // 3.90%
+];
 
-const EVENTS: SubscriptionEvent[] = [
-  { id: "e01", customerId: "c1", plan: "starter",    action: "created",    timestamp: ts("2024-01-15"), mrr: 29  },
-  { id: "e02", customerId: "c2", plan: "pro",        action: "created",    timestamp: ts("2024-01-20"), mrr: 99  },
-  { id: "e03", customerId: "c3", plan: "starter",    action: "created",    timestamp: ts("2024-01-25"), mrr: 29  },
-  { id: "e04", customerId: "c4", plan: "enterprise", action: "created",    timestamp: ts("2024-02-01"), mrr: 249 },
-  { id: "e05", customerId: "c1", plan: "pro",        action: "upgraded",   timestamp: ts("2024-02-10"), mrr: 99  },
-  { id: "e06", customerId: "c5", plan: "starter",    action: "created",    timestamp: ts("2024-02-15"), mrr: 29  },
-  { id: "e07", customerId: "c3", plan: "starter",    action: "canceled",   timestamp: ts("2024-02-20"), mrr: 29  },
-  { id: "e08", customerId: "c2", plan: "enterprise", action: "upgraded",   timestamp: ts("2024-03-01"), mrr: 249 },
-  { id: "e09", customerId: "c6", plan: "pro",        action: "created",    timestamp: ts("2024-03-05"), mrr: 99  },
-  { id: "e10", customerId: "c1", plan: "enterprise", action: "upgraded",   timestamp: ts("2024-03-10"), mrr: 249 },
-  { id: "e11", customerId: "c5", plan: "pro",        action: "upgraded",   timestamp: ts("2024-03-15"), mrr: 99  },
-  { id: "e12", customerId: "c4", plan: "pro",        action: "downgraded", timestamp: ts("2024-03-20"), mrr: 99  },
-  { id: "e13", customerId: "c2", plan: "enterprise", action: "canceled",   timestamp: ts("2024-04-01"), mrr: 249 },
-  { id: "e14", customerId: "c6", plan: "pro",        action: "canceled",   timestamp: ts("2024-04-10"), mrr: 99  },
-  { id: "e15", customerId: "c7", plan: "starter",    action: "created",    timestamp: ts("2024-04-15"), mrr: 29  },
-  { id: "e16", customerId: "c1", plan: "enterprise", action: "renewed",    timestamp: ts("2024-04-20"), mrr: 249 },
-  { id: "e17", customerId: "c5", plan: "pro",        action: "canceled",   timestamp: ts("2024-05-01"), mrr: 99  },
-  { id: "e18", customerId: "c7", plan: "pro",        action: "upgraded",   timestamp: ts("2024-05-10"), mrr: 99  },
+const VOLUME_TIERS: VolumeTier[] = [
+  { upTo: 50000,    discountPercent: 0 },
+  { upTo: 200000,   discountPercent: 10 },
+  { upTo: Infinity,  discountPercent: 20 },
+];
+
+// Valid transactions (used in Parts 1, 2, 4)
+const TRANSACTIONS: Transaction[] = [
+  { id: "t01", merchant: "m1", amount: 10000,  currency: "USD", type: "card_present" },
+  { id: "t02", merchant: "m1", amount: 25000,  currency: "USD", type: "card_not_present" },
+  { id: "t03", merchant: "m1", amount: 15000,  currency: "EUR", type: "international" },
+  { id: "t04", merchant: "m1", amount: 8000,   currency: "USD", type: "card_present" },
+  { id: "t05", merchant: "m2", amount: 3000,   currency: "USD", type: "card_not_present" },
+  { id: "t06", merchant: "m2", amount: 7500,   currency: "USD", type: "card_present" },
+  { id: "t07", merchant: "m2", amount: 4200,   currency: "GBP", type: "international" },
+  { id: "t08", merchant: "m3", amount: 120000, currency: "USD", type: "card_not_present" },
+  { id: "t09", merchant: "m3", amount: 95000,  currency: "USD", type: "card_present" },
+  { id: "t10", merchant: "m3", amount: 45000,  currency: "EUR", type: "international" },
+];
+
+// Transactions with some invalid entries (used in Part 3)
+const TRANSACTIONS_WITH_INVALID: Transaction[] = [
+  ...TRANSACTIONS,
+  { id: "t11", merchant: "m1", amount: -500,    currency: "USD",  type: "card_present" },
+  { id: "t12", merchant: "m2", amount: 1000000, currency: "USD",  type: "card_not_present" },
+  { id: "t13", merchant: "m1", amount: 5000,    currency: "usd",  type: "card_present" },
+  { id: "t14", merchant: "m2", amount: 3000,    currency: "USD",  type: "wire_transfer" },
+  { id: "t15", merchant: "m1", amount: 2000,    currency: "USDD", type: "card_present" },
 ];
 
 // ─── Checks ──────────────────────────────────────────────────────
 
 function runSelfChecks(): void {
   // ── Part 1 ──────────────────────────────────────────────────────
-  level("Part 1 \u2014 Event Ingestion & Active Counts", () => {
-    const sa = new SubscriptionAnalytics();
-    sa.ingest(EVENTS);
+  //
+  // Fee calculations:
+  //   t01: m1, 10000, card_present     -> 10 + ceil(10000*200/10000) = 10 + 200 = 210
+  //   t02: m1, 25000, card_not_present -> 30 + ceil(25000*290/10000) = 30 + 725 = 755
+  //   t03: m1, 15000, international    -> 30 + ceil(15000*390/10000) = 30 + 585 = 615
+  //   t04: m1,  8000, card_present     -> 10 + ceil(8000*200/10000)  = 10 + 160 = 170
+  //   t05: m2,  3000, card_not_present -> 30 + ceil(3000*290/10000)  = 30 + 87  = 117
+  //   t06: m2,  7500, card_present     -> 10 + ceil(7500*200/10000)  = 10 + 150 = 160
+  //   t07: m2,  4200, international    -> 30 + ceil(4200*390/10000)  = 30 + 164 = 194
+  //   t08: m3,120000, card_not_present -> 30 + ceil(120000*290/10000)= 30 + 3480= 3510
+  //   t09: m3, 95000, card_present     -> 10 + ceil(95000*200/10000) = 10 + 1900= 1910
+  //   t10: m3, 45000, international    -> 30 + ceil(45000*390/10000) = 30 + 1755= 1785
+  //
+  //   m1: volume=58000,  fees=1750, count=4
+  //   m2: volume=14700,  fees=471,  count=3
+  //   m3: volume=260000, fees=7205, count=3
 
-    // After all events:
-    //   c1: enterprise (active)  — created starter, upgraded pro, upgraded enterprise, renewed
-    //   c2: canceled             — created pro, upgraded enterprise, canceled
-    //   c3: canceled             — created starter, canceled
-    //   c4: pro (active)         — created enterprise, downgraded pro
-    //   c5: canceled             — created starter, upgraded pro, canceled
-    //   c6: canceled             — created pro, canceled
-    //   c7: pro (active)         — created starter, upgraded pro
-    // Active: c1 (enterprise), c4 (pro), c7 (pro) => 3
+  level("Part 1 \u2014 Fee Calculation", () => {
+    const result = calculateFees(TRANSACTIONS, FEE_SCHEDULE);
 
-    check("active count", sa.getActiveCount(), 3);
-    checkMap("active by plan", sa.getActiveByPlan(), { enterprise: 1, pro: 2 });
-    check("c1 plan", sa.getCustomerPlan("c1"), "enterprise");
-    check("c2 plan (canceled)", sa.getCustomerPlan("c2"), null);
-    check("c3 plan (canceled)", sa.getCustomerPlan("c3"), null);
-    check("c4 plan", sa.getCustomerPlan("c4"), "pro");
-    check("c5 plan (canceled)", sa.getCustomerPlan("c5"), null);
-    check("c6 plan (canceled)", sa.getCustomerPlan("c6"), null);
-    check("c7 plan", sa.getCustomerPlan("c7"), "pro");
-    check("unknown customer", sa.getCustomerPlan("c99"), null);
+    checkMap("merchant summaries", result, {
+      m1: { totalVolume: 58000,  totalFees: 1750, transactionCount: 4 },
+      m2: { totalVolume: 14700,  totalFees: 471,  transactionCount: 3 },
+      m3: { totalVolume: 260000, totalFees: 7205, transactionCount: 3 },
+    });
 
-    // Test incremental ingest
-    const sa2 = new SubscriptionAnalytics();
-    sa2.ingest(EVENTS.slice(0, 3));
-    check("partial active count", sa2.getActiveCount(), 3);
-    sa2.ingest(EVENTS.slice(3));
-    check("full active count after two ingests", sa2.getActiveCount(), 3);
+    // Spot-check individual merchant
+    const m1 = result.get("m1")!;
+    check("m1 totalVolume", m1.totalVolume, 58000);
+    check("m1 totalFees", m1.totalFees, 1750);
+    check("m1 transactionCount", m1.transactionCount, 4);
+
+    const m3 = result.get("m3")!;
+    check("m3 totalFees", m3.totalFees, 7205);
   });
 
   // ── Part 2 ──────────────────────────────────────────────────────
-  level("Part 2 \u2014 MRR Calculations", () => {
-    const sa = new SubscriptionAnalytics();
-    sa.ingest(EVENTS);
+  //
+  // Volume discount tiers:
+  //   m1: volume=58000  -> 58000 <= 200000 => 10% discount
+  //       discountedFees = 1750 - floor(1750*10/100) = 1750 - 175 = 1575
+  //   m2: volume=14700  -> 14700 <= 50000  => 0% discount
+  //       discountedFees = 471
+  //   m3: volume=260000 -> 260000 > 200000 => 20% discount
+  //       discountedFees = 7205 - floor(7205*20/100) = 7205 - 1441 = 5764
 
-    // Active: c1 enterprise $249, c4 pro $99, c7 pro $99
-    // Total MRR = 249 + 99 + 99 = 447
-    check("current MRR", sa.getCurrentMRR(), 447);
-    checkMap("MRR by plan", sa.getMRRByPlan(), { enterprise: 249, pro: 198 });
+  level("Part 2 \u2014 Tiered Volume Discounts", () => {
+    const summaries = calculateFees(TRANSACTIONS, FEE_SCHEDULE);
+    const discounted = applyVolumeDiscounts(summaries, VOLUME_TIERS);
 
-    // MRR movements for all time
-    // new: c1(29) + c2(99) + c3(29) + c4(249) + c5(29) + c6(99) + c7(29) = 563
-    // expansion: c1 starter->pro (99-29=70) + c2 pro->enterprise (249-99=150)
-    //          + c1 pro->enterprise (249-99=150) + c5 starter->pro (99-29=70)
-    //          + c7 starter->pro (99-29=70) = 510
-    // contraction: c4 enterprise->pro (249-99=150) = 150
-    // churn: c3(29) + c2(249) + c6(99) + c5(99) = 476
-    // net: 563 + 510 - 150 - 476 = 447
-    const allTime = sa.getMRRMovements(0, ts("2025-01-01"));
-    check("all-time new", allTime.new, 563);
-    check("all-time expansion", allTime.expansion, 510);
-    check("all-time contraction", allTime.contraction, 150);
-    check("all-time churn", allTime.churn, 476);
-    check("all-time net", allTime.net, 447);
+    const m1 = discounted.get("m1")!;
+    check("m1 discountPercent", m1.discountPercent, 10);
+    check("m1 discountedFees", m1.discountedFees, 1575);
 
-    // MRR movements for January 2024 only
-    // new: c1(29) + c2(99) + c3(29) = 157
-    // expansion: 0
-    // contraction: 0
-    // churn: 0
-    // net: 157
-    const jan = sa.getMRRMovements(ts("2024-01-01"), ts("2024-01-31"));
-    check("jan new", jan.new, 157);
-    check("jan expansion", jan.expansion, 0);
-    check("jan contraction", jan.contraction, 0);
-    check("jan churn", jan.churn, 0);
-    check("jan net", jan.net, 157);
+    const m2 = discounted.get("m2")!;
+    check("m2 discountPercent", m2.discountPercent, 0);
+    check("m2 discountedFees", m2.discountedFees, 471);
 
-    // MRR movements for March 2024
-    // new: c6(99) = 99
-    // expansion: c2 pro->enterprise (150) + c1 pro->enterprise (150) + c5 starter->pro (70) = 370
-    // contraction: c4 enterprise->pro (150) = 150
-    // churn: 0
-    // net: 99 + 370 - 150 - 0 = 319
-    const mar = sa.getMRRMovements(ts("2024-03-01"), ts("2024-03-31"));
-    check("mar new", mar.new, 99);
-    check("mar expansion", mar.expansion, 370);
-    check("mar contraction", mar.contraction, 150);
-    check("mar churn", mar.churn, 0);
-    check("mar net", mar.net, 319);
+    const m3 = discounted.get("m3")!;
+    check("m3 discountPercent", m3.discountPercent, 20);
+    check("m3 discountedFees", m3.discountedFees, 5764);
   });
 
   // ── Part 3 ──────────────────────────────────────────────────────
-  level("Part 3 \u2014 Cohort Analysis", () => {
-    const sa = new SubscriptionAnalytics();
-    sa.ingest(EVENTS);
+  //
+  // Invalid transactions:
+  //   t11: amount=-500     -> "invalid_amount"
+  //   t12: amount=1000000  -> "invalid_amount"
+  //   t13: currency="usd"  -> "invalid_currency"
+  //   t14: type="wire_transfer" -> "invalid_type"
+  //   t15: currency="USDD" -> "invalid_currency"
 
-    // January 2024 cohort: c1, c2, c3
-    // Jan (month 0): all 3 active => 100%
-    // Feb: c3 canceled on Feb 20 => c1, c2 active at start of Feb => 3 active at start, but
-    //   actually "start of Feb" means before Feb events. At start of Feb all 3 still active.
-    //   c3 canceled during Feb so at start of Mar: c1, c2 active = 2/3 => 67%
-    //   Wait, let me re-read: "active at start of month N" = not canceled before start of month N.
-    //
-    //   Start of Jan: all created during Jan, so at start of Jan they haven't been created yet...
-    //   Actually, index 0 is the cohort month itself and is always 100.
-    //
-    //   Let me think about this more carefully:
-    //   Index 0 = Jan 2024 = 100 (by definition)
-    //   Index 1 = Feb 2024: c3 canceled Feb 20. At start of Feb (Feb 1), c3 is still active. 3/3 = 100
-    //   Index 2 = Mar 2024: c3 canceled Feb 20 (before Mar 1). So c1,c2 active at start of Mar. 2/3 = 67
-    //   Index 3 = Apr 2024: c2 canceled Apr 1. At start of Apr, c2 still active? Apr 1 is start of Apr.
-    //     c2 canceled ON Apr 1. "canceled before start of month" - if canceled at ts("2024-04-01") and
-    //     start of Apr is ts("2024-04-01"), the cancellation is AT the start, not before. So c1,c2 active. 2/3 = 67
-    //   Index 4 = May 2024: c2 canceled Apr 1 which is before May 1. c1 active. 1/3 = 33
-    //   Last event is May 10, so last month with events is May 2024.
-    //
-    const janCohort = sa.getRetention("2024-01");
-    check("jan cohort length", janCohort.length, 5);
-    check("jan cohort[0]", janCohort[0], 100);
-    check("jan cohort[1] (feb)", janCohort[1], 100);
-    check("jan cohort[2] (mar)", janCohort[2], 67);
-    check("jan cohort[3] (apr)", janCohort[3], 67);
-    check("jan cohort[4] (may)", janCohort[4], 33);
+  level("Part 3 \u2014 Transaction Validation & Rejection", () => {
+    const result = processTransactions(TRANSACTIONS_WITH_INVALID, FEE_SCHEDULE, VOLUME_TIERS);
 
-    // February 2024 cohort: c4, c5
-    // Index 0 = Feb = 100
-    // Index 1 = Mar: c4,c5 both active at start of Mar => 100
-    // Index 2 = Apr: c4,c5 both active at start of Apr => 100
-    // Index 3 = May: c5 canceled May 1, at start of May c5 still active? Same logic: canceled AT start = still active. 2/2 = 100
-    //   Actually let me reconsider. c5 canceled on May 1. Start of May is May 1.
-    //   "not canceled before start of month N" - "before" means strictly before. Canceled ON May 1 is not before May 1. So active. 100.
-    //   But wait, the last month with events is May. So we go through May.
-    const febCohort = sa.getRetention("2024-02");
-    check("feb cohort length", febCohort.length, 4);
-    check("feb cohort[0]", febCohort[0], 100);
-    check("feb cohort[1] (mar)", febCohort[1], 100);
-    check("feb cohort[2] (apr)", febCohort[2], 100);
-    check("feb cohort[3] (may)", febCohort[3], 100);
+    check("rejected count", result.rejected.length, 5);
 
-    // Empty cohort
-    check("empty cohort", sa.getRetention("2023-06"), []);
+    check("t11 rejected", result.rejected[0], { id: "t11", reason: "invalid_amount" });
+    check("t12 rejected", result.rejected[1], { id: "t12", reason: "invalid_amount" });
+    check("t13 rejected", result.rejected[2], { id: "t13", reason: "invalid_currency" });
+    check("t14 rejected", result.rejected[3], { id: "t14", reason: "invalid_type" });
+    check("t15 rejected", result.rejected[4], { id: "t15", reason: "invalid_currency" });
 
-    // Churn rate: April 2024
-    // Active at start of Apr (before Apr events): c1, c2, c4, c5, c6 = wait let me recount
-    // At start of Apr (ts 2024-04-01), who is active?
-    //   c1: active (enterprise) - yes
-    //   c2: upgraded to enterprise in Mar, not yet canceled - yes
-    //   c3: canceled Feb 20 - no
-    //   c4: downgraded to pro in Mar - yes
-    //   c5: upgraded to pro in Mar - yes
-    //   c6: created pro Mar 5 - yes
-    // Active at start of Apr: c1, c2, c4, c5, c6 = 5
-    // Canceled in Apr: c2 (Apr 1), c6 (Apr 10) = 2
-    // Churn rate = round(2/5 * 100) = 40
-    check("churn rate apr", sa.getChurnRate(ts("2024-04-01"), ts("2024-04-30")), 40);
-
-    // Churn rate: January 2024 (no cancellations)
-    // Active at start of Jan (before Jan events): 0 customers
-    // Return 0 if no active subscriptions at startTs
-    check("churn rate jan (no active)", sa.getChurnRate(ts("2024-01-01"), ts("2024-01-31")), 0);
-
-    // Churn rate: Feb 2024
-    // Active at start of Feb: c1, c2, c3 = 3
-    // Canceled in Feb: c3 = 1
-    // Churn rate = round(1/3 * 100) = 33
-    check("churn rate feb", sa.getChurnRate(ts("2024-02-01"), ts("2024-02-28")), 33);
+    // Valid transactions still processed correctly (same as Part 2 results)
+    const m1 = result.processed.get("m1")!;
+    check("m1 still correct after filtering", m1.discountedFees, 1575);
   });
 
   // ── Part 4 ──────────────────────────────────────────────────────
-  level("Part 4 \u2014 Plan Migration Paths", () => {
-    const sa = new SubscriptionAnalytics();
-    sa.ingest(EVENTS);
+  //
+  // Settlement by (merchant, currency):
+  //   (m1, EUR): gross=15000,  fees=615,  net=14385
+  //   (m1, USD): gross=43000,  fees=1135, net=41865
+  //   (m2, GBP): gross=4200,   fees=194,  net=4006
+  //   (m2, USD): gross=10500,  fees=277,  net=10223
+  //   (m3, EUR): gross=45000,  fees=1785, net=43215
+  //   (m3, USD): gross=215000, fees=5420, net=209580
 
-    // Upgrades:
-    //   c1: starter -> pro (e05)
-    //   c2: pro -> enterprise (e08)
-    //   c1: pro -> enterprise (e10)
-    //   c5: starter -> pro (e11)
-    //   c7: starter -> pro (e18)
-    const paths = sa.getUpgradePaths();
-    checkNestedMap("upgrade paths", paths, {
-      starter: { pro: 3 },
-      pro: { enterprise: 2 },
-    });
+  level("Part 4 \u2014 Settlement Report", () => {
+    const settlement = generateSettlement(TRANSACTIONS, FEE_SCHEDULE);
 
-    // Average lifetime for canceled customers by plan at cancellation:
-    //   c3: canceled starter, created Jan 25, canceled Feb 20
-    //       lifetime = ts("2024-02-20") - ts("2024-01-25") = 26 days
-    //   c2: canceled enterprise, created Jan 20, canceled Apr 1
-    //       lifetime = ts("2024-04-01") - ts("2024-01-20") = 72 days
-    //   c6: canceled pro, created Mar 5, canceled Apr 10
-    //       lifetime = ts("2024-04-10") - ts("2024-03-05") = 36 days
-    //   c5: canceled pro, created Feb 15, canceled May 1
-    //       lifetime = ts("2024-05-01") - ts("2024-02-15") = 76 days
+    check("settlement length", settlement.length, 6);
 
-    const starterLifetime = ts("2024-02-20") - ts("2024-01-25");
-    check("avg lifetime starter", sa.getAverageLifetime("starter"), starterLifetime);
-
-    const proLifetime = Math.round(((ts("2024-04-10") - ts("2024-03-05")) + (ts("2024-05-01") - ts("2024-02-15"))) / 2);
-    check("avg lifetime pro", sa.getAverageLifetime("pro"), proLifetime);
-
-    const enterpriseLifetime = ts("2024-04-01") - ts("2024-01-20");
-    check("avg lifetime enterprise", sa.getAverageLifetime("enterprise"), enterpriseLifetime);
-
-    // No cancellations on a plan that doesn't exist
-    check("avg lifetime unknown", sa.getAverageLifetime("basic"), 0);
+    check("entry 0", settlement[0], { merchant: "m1", currency: "EUR", grossVolume: 15000,  totalFees: 615,  netAmount: 14385 });
+    check("entry 1", settlement[1], { merchant: "m1", currency: "USD", grossVolume: 43000,  totalFees: 1135, netAmount: 41865 });
+    check("entry 2", settlement[2], { merchant: "m2", currency: "GBP", grossVolume: 4200,   totalFees: 194,  netAmount: 4006 });
+    check("entry 3", settlement[3], { merchant: "m2", currency: "USD", grossVolume: 10500,  totalFees: 277,  netAmount: 10223 });
+    check("entry 4", settlement[4], { merchant: "m3", currency: "EUR", grossVolume: 45000,  totalFees: 1785, netAmount: 43215 });
+    check("entry 5", settlement[5], { merchant: "m3", currency: "USD", grossVolume: 215000, totalFees: 5420, netAmount: 209580 });
   });
 }
 
 function main(): void {
-  console.log("\nSubscription Analytics Engine\n");
+  console.log("\nPayment Fee Calculator\n");
   runSelfChecks();
   const total = _passed + _failed;
   console.log(`\n${_passed}/${total} passed`);

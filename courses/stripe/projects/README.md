@@ -1,40 +1,16 @@
-# Onsite Interview Simulation Projects
+# Simulations
 
-Four full simulations, one per interview round. Each is timed and self-contained.
+One per interview round, in interview order.
 
-| # | Directory | Interview | Time | Format |
-|---|-----------|-----------|------|--------|
-| 01 | `01-programming-sim/` | Programming Exercise | 50 min | Read spec → implement 4 parts → self-check |
-| 02 | `02-integration-sim/` | Integration Exercise | 50 min | Read spec + existing code → add features + tests |
-| 03 | `03-bug-squash-sim/` | Bug Squash | 50 min | Run failing tests → find and fix 5 bugs |
-| 04 | `04-behavioral-prep/` | Behavioral (User First & Curious + Experience & Goals) | 70 min | Fill-in workbook → rehearse stories out loud |
+| # | Directory | Round | Interviewer | Timer |
+|---|---|---|---|---|
+| 1 | `01-programming-sim/` | Programming Exercise | Nicholas Xavier (45 min) | 40 min |
+| 2 | `02-experience-and-goals/` | Experience & Goals | Ali Riaz (60 min) | Fill in worksheets |
+| 3 | `03-users-first-and-curious/` | Users First & Curious | Tyler Martin (45 min) | Fill in story bank |
+| 4 | `04-integration/` | Integration | Adam Fuller (60 min) | 50 min |
 
 ## How to use
 
-1. Read the README in each project directory first — it's your spec
-2. Set a timer (time listed above)
-3. Talk out loud the entire time (simulate the real interview)
-4. Run the starter/buggy file to check your work: `npx tsx starter.ts` or `npx tsx buggy.ts`
-5. Do NOT open solution.ts / fixed.ts until you've completed your attempt
-6. After finishing, compare against the reference and note gaps
+**Technical sims (01, 04):** Set a timer. Talk out loud. Run `npx tsx starter.ts`. Don't open solution files until done.
 
-## Recommended order
-
-- **Day 1:** `04-behavioral-prep/` (no code — just fill in the workbook and rehearse)
-- **Day 2:** `01-programming-sim/` (warm up on a from-scratch build)
-- **Day 3:** `03-bug-squash-sim/` (practice debugging methodology)
-- **Day 4:** `02-integration-sim/` (hardest — reading existing code + spec + API docs)
-- **Day 5:** Redo whichever project you scored lowest on
-- **Day 6:** Full mock — do all 3 technical projects back-to-back with 15 min breaks
-
-## Scoring yourself
-
-After each simulation, assess on Stripe's actual criteria:
-
-- [ ] Did I read the spec/tests before coding?
-- [ ] Did I talk through my reasoning the whole time?
-- [ ] Did I finish Part 1 and Part 2 cleanly? (Parts 3-4 are stretch)
-- [ ] Is my code clean and readable?
-- [ ] Did I handle errors and edge cases?
-- [ ] Did I ask clarifying questions (even to yourself)?
-- [ ] Did I run my code frequently (every 5-10 lines)?
+**Behavioral sims (02, 03):** Fill in every blank. Practice stories out loud, timed at 2 min each. Ensure zero overlap between Ali's and Tyler's stories.
