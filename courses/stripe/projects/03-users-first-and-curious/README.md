@@ -55,20 +55,26 @@ For each prompt, write a STAR story. Have at least 4 distinct stories across the
 
 ```
 Situation:
-_____________________________________________________________
+"Our roboticized warehouses hit a hard throughput ceiling at 90% capacity — orders would start backing up, but we couldn't reproduce the problem without disrupting real customer orders." 
 
 Task:
-_____________________________________________________________
+I was asked to build an automated test order generator based on an existing spec. But the spec inherited the same limitations the team was already struggling with.
 
 Action:
-_____________________________________________________________
-_____________________________________________________________
+After reviewing the spec I realized that the tool spec was simply an extension of our existing test order system, and would likely inherit the same shortfalls that the warehouse team was already experiencing. I needed to dig deeper into the actual problems and how the team is using the testing tooling day to day. I interviewed a few of the actual users and discovered that the recipes needed to be able to target the actual bottlenecks which were physical space and pathing issues, and could not be targeted with the existing ordering paradigm which was built for the consumer order app (grocery categories), not for the robotics team to search by real world location. I pivoted to designing a new order generation system where they could search for items by physical location and create test order batches specifically to challenge the pathing algorithms.
+
+  1. "I read the spec and realized it was just the existing test system with a cron job" (you questioned  
+  the requirement)
+  2. "I interviewed the robotics team and discovered they needed to target physical locations, not grocery
+   categories" (you went to the user)                                                                     
+  3. "I designed a new order generator where they could search by physical location and create batches 
+  targeting specific pathing challenges" (you built what they actually needed) 
 
 Result:
-_____________________________________________________________
+Through the use of this new test order approach the robotics team was able to eliminate the critical performance drop at 90% capacity, it also doubled overall throughput of the system. The services I developed for that new order generation approach then became the basis for many of the operator dashboards moving forward as it was designed for the real users of that system, not the consumers on the other end who needed a very different product.
 
 Curiosity Angle — What did you learn about the user that surprised you?
-_____________________________________________________________
+The robotics team tended to think in terms of the tools they were given, as opposed to what is actually possible. They were very talented engineers and used the cloud tooling day to day, so I had assumed that they had a better understanding of the data structures and what was possible. It turns out they are hyper focused on the hardware in front of them, and didnt know what they could actually ask for.
 ```
 
 ### Story 2: Proactive UX/DX improvement
@@ -77,20 +83,21 @@ _____________________________________________________________
 
 ```
 Situation:
-_____________________________________________________________
+Our item error rate was 1 in 20 and operators couldn't trace what went wrong because the order management UI was essentially useless.
 
 Task:
-_____________________________________________________________
+The self-assigned task was to make this critical page actually useful. I was the primary developer supporting the order management UI. When I inherited it there were only a few properties exposed and they were mislabeled and error prone.
 
 Action:
-_____________________________________________________________
-_____________________________________________________________
+I analyzed and traced the 2 data systems that were represented and conflated in the UI. There was the state of the order in the system itself, internal and stored in mongoDB on-prem. Then there was the state of the order in the cloud system, external and stored in MySQL.
+First I separated the data sets into different columns to clarify what was internal machine state, and what was consumer facing. Previously the "status" of the order was constantly confused and miscommunicated because operator had no way to tell the statuses apart.
+Secondly I discovered that we were already storing an audit trail for every operation on an order record in the cloud system. I added an order history UI that also connected to system logs and factory events. It clearly showed what happened and when, and easily linked to deeper system information.
 
 Result:
-_____________________________________________________________
+The operators were immediately able to produce a list of detailed error reports. What happened, when, why, and how to reproduce. This was basically impossible before. It enabled the robotics team to cut the item error rate in half in the first month. The little history widget was called out for being the highest impact surprise feature that quarter at the company all-hands.
 
 Curiosity Angle — How did you notice the problem? What made you dig in?
-_____________________________________________________________
+I was trying to help the operators troubleshoot issues with orders. They often blamed the cloud system for data discrepancies and it was a challenge to find evidence either way. I noticed that I didn't really understand the difference between the 2 "order" entities and decided that this was an important distinction to make in the UI.
 ```
 
 ### Story 3: Learning from a user interaction
