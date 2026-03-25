@@ -77,7 +77,6 @@ Part 3 — Webhook Handler (10 min)
 */
 
 import express, { Request, Response, NextFunction } from "express";
-import { error } from "node:console";
 import request from "supertest";
 
 // ─── Fake Stripe API (simulates external service — do not edit) ─

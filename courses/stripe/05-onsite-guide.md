@@ -24,6 +24,8 @@ The recruiter is your advocate — they want you to pass. Use this call to gathe
 1. **"Can you tell me anything specific about what to expect in the programming or integration exercise?"** — They sometimes share the general topic area or format hints.
 2. **"Is there anything about my background that I should be prepared to address?"** — Reveals if there's a concern on their side so you can prepare a response.
 3. **"What do the strongest candidates do differently in the behavioral rounds?"** — They see hundreds of debriefs. They know the patterns.
+ - demonstrate thinking about the pronciples.
+ - delivery and reflection
 4. **"Is there anything about the format or logistics beyond the prep doc?"** — Screen sharing setup, paired vs solo, time structure.
 5. **"Can you tell me anything about the interviewers' styles?"** — Sometimes they'll share useful context.
 6. **"What's the most common reason TSE candidates don't pass the onsite?"** — Tells you exactly what to avoid.
@@ -53,6 +55,8 @@ From the official prep doc, Stripe assesses these across every interview:
 - **Operating principles** — Does your approach align with Stripe's culture?
 
 ---
+requirements: 
+
 
 ## Round 1: Programming Exercise (45 min) — Nicholas Xavier
 
@@ -202,6 +206,9 @@ The reflection is what separates "I completed a project" from "I grew as an engi
 
 ## Round 2: Experience & Goals (60 min) — Ali Riaz
 
+Hiring manager - started as TSE 6+ years at stripe
+ - likes varied experience / co-founder etc.
+
 ### What It Is
 
 Behavioral interview focused on your career, technical depth, and fit for the TSE role. Ali will discuss technically challenging projects you've led and what you're looking for next.
@@ -261,6 +268,8 @@ One candidate on Levels.fyi aced all 4 technical rounds but failed Experience & 
 ---
 
 ## Round 3: Users First & Curious (45 min) — Tyler Martin
+
+skip-level hiring manager's manager - newishH
 
 ### What It Is
 

@@ -83,21 +83,93 @@ type Charge = { id: string; amount: number; currency: string };
 type ChargeResult = { id: string; amount: number; fee: number; currency: string };
 
 // Part 1
+// Fee = ceil(amountCents * percent / 100) + flatCents.
+//   Always round UP (Stripe convention — never undercharge the fee).
+//   If amountCents <= 0, return 0.
 function calculateFlatFee(amountCents: number, percent: number, flatCents: number): number {
-  throw new Error("TODO");
+  if (amountCents <= 0) return 0;
+  return Math.ceil(amountCents * percent / 100) + flatCents;
 }
 
 // Part 2
+// Apply each tier's percentage only to the portion of the amount
+//   in that tier's range (graduated/marginal — same pattern as
+//   tiered pricing). Round UP the total.
+
+//   Tiers are sorted ascending by upTo. Last tier may use Infinity.
 function calculateTieredFee(amountCents: number, tiers: FeeTier[]): number {
-  throw new Error("TODO");
+  
+  // track total and last tier
+  // current teir = amount - last
+  // multiply percent against difference
+  // add to total
+  // contiue while amount > upTo 
+
+  let last = 0, total = 0;
+  for (const { upTo, percent } of tiers) {
+    const tierAmount = Math.min(amountCents, upTo) - last;
+    const fee = tierAmount * percent / 100;
+    total += fee;
+    last = upTo;
+    if (upTo > amountCents) break;
+  }
+
+  return Math.round(total);
 }
 
 // Part 3
+// type CurrencyConfig = { tiers: FeeTier[]; flatCents: number; minimumCents: number }
+//   type FeeSchedule = Record<string, CurrencyConfig>
+//   type Charge = { id: string; amount: number; currency: string }
+//   type ChargeResult = { id: string; amount: number; fee: number; currency: string }
+
+//   processCharges(charges: Charge[], schedule: FeeSchedule): {
+//     results: ChargeResult[];
+//     totalFees: number;
+//   }
+
+//   For each charge:
+//     fee = max(calculateTieredFee(amount, tiers) + flatCents, minimumCents)
+//     If currency not in schedule, fee = -1 (excluded from totalFees).
+
+//   The key: if you extracted calculateTieredFee as a helper in Part 2,
+//   this is just a loop with a lookup + max().
 function processCharges(charges: Charge[], schedule: FeeSchedule): {
   results: ChargeResult[];
   totalFees: number;
 } {
-  throw new Error("TODO");
+
+  const results: ChargeResult[] = [];
+  let totalFees = 0;
+
+  for (const { id, amount, currency } of charges) {
+    const feeSch = schedule[currency];
+    if (!feeSch) {
+      const result = {
+        id,
+        amount,
+        fee: -1,
+        currency,
+      };
+      results.push(result);
+      continue;
+    }
+    const { tiers, flatCents, minimumCents } = feeSch;
+    const fee = Math.max(calculateTieredFee(amount, tiers) + flatCents, minimumCents);
+    totalFees += fee;
+    const result = {
+      id,
+      amount,
+      fee,
+      currency,
+    }
+    results.push(result);
+  }
+
+  return {
+    results,
+    totalFees,
+  }
 }
 
 // ─── Self-Checks (do not edit below this line) ──────────────────

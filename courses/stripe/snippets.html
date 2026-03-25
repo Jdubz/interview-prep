@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stripe Interview Helpers</title>
+<title>Stripe Interview Patterns</title>
 <style>
   :root { --bg:#0d1117; --sf:#161b22; --bd:#30363d; --tx:#e6edf3; --mt:#8b949e; --ac:#635bff; --gn:#3fb950; }
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -24,249 +24,604 @@
 </head>
 <body>
 
-<h1>Stripe Interview Helpers</h1>
-<p class="sub">Small composable helpers. Copy one, use it to build your solution.</p>
+<h1>Stripe Interview Patterns</h1>
+<p class="sub">Readable building blocks. Copy one, adapt it to the problem.</p>
 
-<div class="cat">Data Wrangling</div>
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="cat">Parsing Input</div>
 <div class="grid">
 
-<div class="s"><div class="sh"><span class="sn">parseCSV</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<div class="s"><div class="sh"><span class="sn">parseCSV — rows to objects</span><button class="cp" onclick="copy(this)">Copy</button></div>
 <pre><code>function parseCSV(raw: string) {
   const lines = raw.trim().split("\n");
-  const hdr = lines[0].split(",").map(h => h.trim());
-  return lines.slice(1).map(l => {
-    const v = l.split(",").map(s => s.trim());
-    return Object.fromEntries(hdr.map((h, i) => [h, v[i] ?? ""]));
+  const headers = lines[0].split(",").map(h =&gt; h.trim());
+  return lines.slice(1).map(line =&gt; {
+    const values = line.split(",").map(v =&gt; v.trim());
+    return Object.fromEntries(
+      headers.map((header, i) =&gt; [header, values[i] ?? ""])
+    );
   });
 }</code></pre></div>
 
-<div class="s"><div class="sh"><span class="sn">parseKV</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<div class="s"><div class="sh"><span class="sn">parseKV — key=value config</span><button class="cp" onclick="copy(this)">Copy</button></div>
 <pre><code>function parseKV(raw: string): Map&lt;string, string&gt; {
-  const m = new Map&lt;string, string&gt;();
+  const result = new Map&lt;string, string&gt;();
   for (const line of raw.trim().split("\n")) {
-    const t = line.trim();
-    if (!t || t.startsWith("#")) continue;
-    const i = t.indexOf("=");
-    if (i !== -1) m.set(t.slice(0, i).trim(), t.slice(i + 1).trim());
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eqIndex = trimmed.indexOf("=");
+    if (eqIndex !== -1) {
+      const key = trimmed.slice(0, eqIndex).trim();
+      const val = trimmed.slice(eqIndex + 1).trim();
+      result.set(key, val);
+    }
   }
-  return m;
+  return result;
 }</code></pre></div>
 
-<div class="s"><div class="sh"><span class="sn">groupBy</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>function groupBy&lt;T&gt;(arr: T[], key: (x: T) => string) {
-  const m = new Map&lt;string, T[]&gt;();
-  for (const x of arr) {
-    const k = key(x);
-    if (!m.has(k)) m.set(k, []);
-    m.get(k)!.push(x);
+</div>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="cat">Grouping &amp; Aggregation</div>
+<div class="grid">
+
+<div class="s"><div class="sh"><span class="sn">groupBy — one key</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>function groupBy&lt;T&gt;(items: T[], keyFn: (item: T) =&gt; string) {
+  const groups = new Map&lt;string, T[]&gt;();
+  for (const item of items) {
+    const key = keyFn(item);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(item);
   }
-  return m;
-}</code></pre></div>
+  return groups;
+}
+// groupBy(charges, c =&gt; c.currency)</code></pre></div>
+
+<div class="s"><div class="sh"><span class="sn">groupByTwo — compound key</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>// Use when you need to group by two dimensions
+// e.g. charges by (merchant, currency) or events by (user, day)
+function groupByTwo&lt;T&gt;(
+  items: T[],
+  keyA: (item: T) =&gt; string,
+  keyB: (item: T) =&gt; string,
+) {
+  const groups = new Map&lt;string, Map&lt;string, T[]&gt;&gt;();
+  for (const item of items) {
+    const a = keyA(item);
+    const b = keyB(item);
+    if (!groups.has(a)) groups.set(a, new Map());
+    const inner = groups.get(a)!;
+    if (!inner.has(b)) inner.set(b, []);
+    inner.get(b)!.push(item);
+  }
+  return groups;
+}
+// groupByTwo(txns, t =&gt; t.merchant, t =&gt; t.currency)</code></pre></div>
 
 <div class="s"><div class="sh"><span class="sn">countBy</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>function countBy&lt;T&gt;(arr: T[], key: (x: T) => string) {
-  const m = new Map&lt;string, number&gt;();
-  for (const x of arr) {
-    const k = key(x);
-    m.set(k, (m.get(k) ?? 0) + 1);
+<pre><code>function countBy&lt;T&gt;(items: T[], keyFn: (item: T) =&gt; string) {
+  const counts = new Map&lt;string, number&gt;();
+  for (const item of items) {
+    const key = keyFn(item);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
   }
-  return m;
+  return counts;
 }</code></pre></div>
 
-<div class="s"><div class="sh"><span class="sn">indexBy</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>function indexBy&lt;T&gt;(arr: T[], key: (x: T) => string) {
-  return new Map(arr.map(x => [key(x), x]));
-}</code></pre></div>
-
-<div class="s"><div class="sh"><span class="sn">dedupBy</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>function dedupBy&lt;T&gt;(arr: T[], key: (x: T) => string) {
-  const seen = new Set&lt;string&gt;();
-  return arr.filter(x => { const k = key(x); if (seen.has(k)) return false; seen.add(k); return true; });
-}</code></pre></div>
+<div class="s"><div class="sh"><span class="sn">indexBy — fast lookup by unique key</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>function indexBy&lt;T&gt;(items: T[], keyFn: (item: T) =&gt; string) {
+  return new Map(items.map(item =&gt; [keyFn(item), item]));
+}
+// const byId = indexBy(users, u =&gt; u.id);
+// byId.get("usr_123")</code></pre></div>
 
 <div class="s"><div class="sh"><span class="sn">sumBy</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>function sumBy&lt;T&gt;(arr: T[], val: (x: T) => number) {
-  return arr.reduce((s, x) => s + val(x), 0);
+<pre><code>function sumBy&lt;T&gt;(items: T[], valueFn: (item: T) =&gt; number) {
+  return items.reduce((sum, item) =&gt; sum + valueFn(item), 0);
 }</code></pre></div>
 
-<div class="s"><div class="sh"><span class="sn">sortBy (numeric desc, string asc tiebreak)</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>function sortBy&lt;T&gt;(arr: T[], num: (x: T) => number, str: (x: T) => string) {
-  return [...arr].sort((a, b) => num(b) - num(a) || str(a).localeCompare(str(b)));
+<div class="s"><div class="sh"><span class="sn">dedupBy — keep first per key</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>function dedupBy&lt;T&gt;(items: T[], keyFn: (item: T) =&gt; string) {
+  const seen = new Set&lt;string&gt;();
+  return items.filter(item =&gt; {
+    const key = keyFn(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}</code></pre></div>
+
+<div class="s"><div class="sh"><span class="sn">sortBy — numeric desc, string asc tiebreak</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>function sortBy&lt;T&gt;(
+  items: T[],
+  numFn: (item: T) =&gt; number,
+  strFn: (item: T) =&gt; string,
+) {
+  return [...items].sort(
+    (a, b) =&gt; numFn(b) - numFn(a) || strFn(a).localeCompare(strFn(b))
+  );
 }</code></pre></div>
 
 <div class="s"><div class="sh"><span class="sn">topN</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>function topN&lt;T&gt;(arr: T[], n: number, cmp: (a: T, b: T) => number) {
-  return [...arr].sort(cmp).slice(0, n);
+<pre><code>function topN&lt;T&gt;(items: T[], n: number, cmp: (a: T, b: T) =&gt; number) {
+  return [...items].sort(cmp).slice(0, n);
 }</code></pre></div>
 
 </div>
 
-<div class="cat">Balance / Money</div>
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="cat">Ledger &amp; Balance</div>
 <div class="grid">
 
-<div class="s"><div class="sh"><span class="sn">balances (from transactions)</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>function balances(txs: { from: string; to: string; amount: number }[]) {
-  const m = new Map&lt;string, number&gt;();
-  for (const { from, to, amount } of txs) {
-    m.set(from, (m.get(from) ?? 0) - amount);
-    m.set(to, (m.get(to) ?? 0) + amount);
+<div class="s"><div class="sh"><span class="sn">balances — net from transactions</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>type Tx = { from: string; to: string; amount: number };
+
+function balances(txns: Tx[]) {
+  const balMap = new Map&lt;string, number&gt;();
+  for (const { from, to, amount } of txns) {
+    balMap.set(from, (balMap.get(from) ?? 0) - amount);
+    balMap.set(to,   (balMap.get(to) ?? 0) + amount);
   }
-  return m;
+  return balMap;
 }</code></pre></div>
 
-<div class="s"><div class="sh"><span class="sn">applyTx (with overdraft check)</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>function applyTx(bals: Map&lt;string, number&gt;, from: string, to: string, amt: number): boolean {
-  if (amt <= 0 || from === to) return false;
-  const fb = bals.get(from) ?? 0;
-  if (fb < amt) return false;
-  bals.set(from, fb - amt);
-  bals.set(to, (bals.get(to) ?? 0) + amt);
+<div class="s"><div class="sh"><span class="sn">applyTx — transfer with overdraft guard</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>function applyTx(
+  balances: Map&lt;string, number&gt;,
+  from: string,
+  to: string,
+  amount: number,
+): boolean {
+  if (amount &lt;= 0 || from === to) return false;
+  const fromBal = balances.get(from) ?? 0;
+  if (fromBal &lt; amount) return false;
+  balances.set(from, fromBal - amount);
+  balances.set(to, (balances.get(to) ?? 0) + amount);
   return true;
 }</code></pre></div>
 
-<div class="s"><div class="sh"><span class="sn">tieredPrice</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>function tieredPrice(units: number, tiers: { upTo: number | null; rate: number }[]) {
-  let total = 0, prev = 0;
+</div>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="cat">Tiered / Graduated Pricing</div>
+<div class="grid">
+
+<div class="s"><div class="sh"><span class="sn">tieredPrice — marginal rates per bracket</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>type Tier = { upTo: number | null; rate: number };
+
+function tieredPrice(units: number, tiers: Tier[]) {
+  let total = 0;
+  let prevCap = 0;
+
   for (const { upTo, rate } of tiers) {
     const cap = upTo ?? Infinity;
-    const qty = Math.min(units, cap) - prev;
-    if (qty <= 0) break;
-    total += qty * rate;
-    prev = cap;
+    const tierQty = Math.min(units, cap) - prevCap;
+    if (tierQty &lt;= 0) break;
+    total += tierQty * rate;
+    prevCap = cap;
   }
+
   return total;
+}
+// tieredPrice(15000, [
+//   { upTo: 10000, rate: 100 },    // first 10k at $1.00
+//   { upTo: 50000, rate: 80 },     // next 40k at $0.80
+//   { upTo: null,  rate: 50 },     // rest at $0.50
+// ])</code></pre></div>
+
+</div>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="cat">Prefix Sums — optimize over ranges</div>
+<div class="grid">
+
+<div class="s"><div class="sh"><span class="sn">prefixSums — precompute for O(1) range queries</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>// Build: O(n), then query any range sum in O(1)
+// Used in: store closing-time penalty, best-window problems
+function buildPrefixSums(values: number[]): number[] {
+  const prefix = [0];
+  for (const val of values) {
+    prefix.push(prefix[prefix.length - 1] + val);
+  }
+  return prefix;
+}
+
+function rangeSum(prefix: number[], left: number, right: number) {
+  return prefix[right + 1] - prefix[left];
+}
+
+// Find index that minimizes a penalty function:
+function bestSplit(entries: string[]) {
+  // e.g. penalty for closing at hour i
+  // left of i: count of "N" (missed customers = 0 penalty, no customers = penalty)
+  // right of i: count of "Y" (open when customers come = good)
+  const n = entries.length;
+  const penalties = entries.map(e =&gt; (e === "Y" ? 1 : 0));
+  const prefix = buildPrefixSums(penalties);
+
+  let bestIdx = 0;
+  let bestPenalty = Infinity;
+  for (let i = 0; i &lt;= n; i++) {
+    const yAfter = rangeSum(prefix, i, n - 1); // customers missed
+    const nBefore = i - rangeSum(prefix, 0, i - 1); // open with nobody
+    const penalty = yAfter + nBefore;
+    if (penalty &lt; bestPenalty) {
+      bestPenalty = penalty;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
 }</code></pre></div>
 
 </div>
 
-<div class="cat">Rate Limiting</div>
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="cat">Sliding Window</div>
 <div class="grid">
 
-<div class="s"><div class="sh"><span class="sn">slidingWindowAllow</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>function slidingWindowAllow(log: Map&lt;string, number[]&gt;, key: string, now: number, max: number, windowMs: number): boolean {
-  const ts = log.get(key) ?? [];
-  while (ts.length && ts[0] <= now - windowMs) ts.shift();
-  if (ts.length >= max) return false;
-  ts.push(now);
-  log.set(key, ts);
+<div class="s"><div class="sh"><span class="sn">slidingWindow — rate limiter</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>// Keep a log of timestamps per key; evict expired entries
+function slidingWindowAllow(
+  log: Map&lt;string, number[]&gt;,
+  key: string,
+  now: number,
+  maxRequests: number,
+  windowMs: number,
+): boolean {
+  const timestamps = log.get(key) ?? [];
+
+  // evict expired
+  while (timestamps.length &amp;&amp; timestamps[0] &lt;= now - windowMs) {
+    timestamps.shift();
+  }
+
+  if (timestamps.length &gt;= maxRequests) return false;
+
+  timestamps.push(now);
+  log.set(key, timestamps);
   return true;
 }</code></pre></div>
 
-<div class="s"><div class="sh"><span class="sn">fixedWindowAllow</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>function fixedWindowAllow(state: Map&lt;string, { c: number; w: number }&gt;, key: string, now: number, max: number, windowMs: number): boolean {
-  const w = Math.floor(now / windowMs);
-  const e = state.get(key);
-  if (!e || e.w !== w) { state.set(key, { c: 1, w }); return true; }
-  if (e.c >= max) return false;
-  e.c++;
+<div class="s"><div class="sh"><span class="sn">fixedWindow — simpler rate limiter</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>type WindowEntry = { count: number; windowId: number };
+
+function fixedWindowAllow(
+  state: Map&lt;string, WindowEntry&gt;,
+  key: string,
+  now: number,
+  maxRequests: number,
+  windowMs: number,
+): boolean {
+  const windowId = Math.floor(now / windowMs);
+  const entry = state.get(key);
+
+  // new window — reset
+  if (!entry || entry.windowId !== windowId) {
+    state.set(key, { count: 1, windowId });
+    return true;
+  }
+
+  if (entry.count &gt;= maxRequests) return false;
+  entry.count++;
   return true;
 }</code></pre></div>
 
 </div>
 
-<div class="cat">String / Parsing</div>
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="cat">Graph Traversal</div>
 <div class="grid">
 
-<div class="s"><div class="sh"><span class="sn">maskPII</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>function maskPII(s: string) {
-  return s
-    .replace(/\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g, m => "****" + m.slice(-4))
-    .replace(/\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g, "[EMAIL]")
-    .replace(/\b\d{3}-\d{2}-\d{4}\b/g, "***-**-****");
+<div class="s"><div class="sh"><span class="sn">buildAdjacencyList</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>type Edge = { from: string; to: string; weight?: number };
+
+function buildGraph(edges: Edge[], directed = true) {
+  const graph = new Map&lt;string, { to: string; weight: number }[]&gt;();
+  for (const { from, to, weight = 1 } of edges) {
+    if (!graph.has(from)) graph.set(from, []);
+    if (!graph.has(to)) graph.set(to, []);
+    graph.get(from)!.push({ to, weight });
+    if (!directed) {
+      graph.get(to)!.push({ to: from, weight });
+    }
+  }
+  return graph;
 }</code></pre></div>
 
-<div class="s"><div class="sh"><span class="sn">braceExpand</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>function braceExpand(s: string): string[] {
-  const segs: (string | string[])[] = [];
-  let i = 0;
-  while (i < s.length) {
-    if (s[i] === "{") { const j = s.indexOf("}", i); segs.push(s.slice(i+1, j).split(",")); i = j+1; }
-    else { let t = ""; while (i < s.length && s[i] !== "{") t += s[i++]; segs.push(t); }
+<div class="s"><div class="sh"><span class="sn">BFS — shortest path / level-order</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>// Use when: edges are unweighted, need shortest path or level-by-level
+// e.g. currency conversion (fewest hops), record linking (1-hop neighbors)
+function bfs(
+  graph: Map&lt;string, { to: string; weight: number }[]&gt;,
+  start: string,
+) {
+  const visited = new Set&lt;string&gt;([start]);
+  const parent = new Map&lt;string, string | null&gt;([[start, null]]);
+  const queue = [start];
+
+  while (queue.length) {
+    const node = queue.shift()!;
+    for (const { to } of graph.get(node) ?? []) {
+      if (visited.has(to)) continue;
+      visited.add(to);
+      parent.set(to, node);
+      queue.push(to);
+    }
   }
-  let res = [""];
-  for (const seg of segs) { const opts = typeof seg === "string" ? [seg] : seg; res = res.flatMap(p => opts.map(o => p + o)); }
-  return res.sort();
+
+  return { visited, parent };
+}
+
+// Reconstruct path from BFS parent map
+function getPath(parent: Map&lt;string, string | null&gt;, target: string) {
+  const path: string[] = [];
+  let node: string | null | undefined = target;
+  while (node != null) {
+    path.push(node);
+    node = parent.get(node);
+  }
+  return path.reverse();
+}</code></pre></div>
+
+<div class="s"><div class="sh"><span class="sn">DFS — reachability / all paths</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>// Use when: need to explore all reachable nodes, detect cycles,
+// or accumulate a product along a path (e.g. currency conversion rates)
+function dfs(
+  graph: Map&lt;string, { to: string; weight: number }[]&gt;,
+  start: string,
+  target: string,
+  visited = new Set&lt;string&gt;(),
+): number | null {
+  if (start === target) return 1;
+  visited.add(start);
+
+  for (const { to, weight } of graph.get(start) ?? []) {
+    if (visited.has(to)) continue;
+    const result = dfs(graph, to, target, visited);
+    if (result !== null) return weight * result;
+  }
+
+  return null; // no path
+}
+// Currency conversion: dfs(rateGraph, "USD", "JPY") =&gt; product of rates</code></pre></div>
+
+</div>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="cat">Union-Find — connected components</div>
+<div class="grid">
+
+<div class="s"><div class="sh"><span class="sn">UnionFind — link records, detect groups</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>// Use when: "are A and B in the same group?" or "merge these two entities"
+// e.g. linking user records across datasets, fraud rings, account merging
+class UnionFind {
+  parent = new Map&lt;string, string&gt;();
+
+  find(x: string): string {
+    if (!this.parent.has(x)) this.parent.set(x, x);
+    if (this.parent.get(x) !== x) {
+      this.parent.set(x, this.find(this.parent.get(x)!)); // path compression
+    }
+    return this.parent.get(x)!;
+  }
+
+  union(a: string, b: string) {
+    this.parent.set(this.find(a), this.find(b));
+  }
+
+  connected(a: string, b: string) {
+    return this.find(a) === this.find(b);
+  }
+
+  groups(): Map&lt;string, string[]&gt; {
+    const result = new Map&lt;string, string[]&gt;();
+    for (const node of this.parent.keys()) {
+      const root = this.find(node);
+      if (!result.has(root)) result.set(root, []);
+      result.get(root)!.push(node);
+    }
+    return result;
+  }
 }</code></pre></div>
 
 </div>
 
-<div class="cat">Graph / Entity</div>
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="cat">Topological Sort — dependency ordering</div>
 <div class="grid">
 
-<div class="s"><div class="sh"><span class="sn">UnionFind</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>class UF {
-  p = new Map&lt;string, string&gt;();
-  find(x: string): string { if (!this.p.has(x)) this.p.set(x, x); if (this.p.get(x) !== x) this.p.set(x, this.find(this.p.get(x)!)); return this.p.get(x)!; }
-  union(a: string, b: string) { this.p.set(this.find(a), this.find(b)); }
-  connected(a: string, b: string) { return this.find(a) === this.find(b); }
-}</code></pre></div>
-
-<div class="s"><div class="sh"><span class="sn">topoSort</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>function topoSort(graph: Map&lt;string, string[]&gt;): string[] | null {
-  const deg = new Map&lt;string, number&gt;();
-  for (const [n, ns] of graph) { deg.set(n, deg.get(n) ?? 0); for (const x of ns) deg.set(x, (deg.get(x) ?? 0) + 1); }
-  const q = [...deg].filter(([,d]) => d === 0).map(([n]) => n), out: string[] = [];
-  while (q.length) { const n = q.shift()!; out.push(n); for (const x of graph.get(n) ?? []) { deg.set(x, deg.get(x)! - 1); if (deg.get(x) === 0) q.push(x); } }
-  return out.length === deg.size ? out : null;
-}</code></pre></div>
-
-<div class="s"><div class="sh"><span class="sn">mergeIntervals</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>function mergeIntervals(ivs: [number, number][]): [number, number][] {
-  const sorted = [...ivs].sort((a, b) => a[0] - b[0]);
-  const res: [number, number][] = [sorted[0]];
-  for (let i = 1; i < sorted.length; i++) {
-    const last = res[res.length - 1];
-    if (sorted[i][0] <= last[1]) last[1] = Math.max(last[1], sorted[i][1]);
-    else res.push(sorted[i]);
+<div class="s"><div class="sh"><span class="sn">topoSort (Kahn's BFS) — returns null if cycle</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>// graph: node -&gt; [nodes it points to] (dependencies flow forward)
+function topoSort(graph: Map&lt;string, string[]&gt;): string[] | null {
+  // count incoming edges
+  const inDegree = new Map&lt;string, number&gt;();
+  for (const [node, neighbors] of graph) {
+    inDegree.set(node, inDegree.get(node) ?? 0);
+    for (const neighbor of neighbors) {
+      inDegree.set(neighbor, (inDegree.get(neighbor) ?? 0) + 1);
+    }
   }
-  return res;
+
+  // start with nodes that have no incoming edges
+  const queue = [...inDegree]
+    .filter(([, deg]) =&gt; deg === 0)
+    .map(([node]) =&gt; node);
+  const order: string[] = [];
+
+  while (queue.length) {
+    const node = queue.shift()!;
+    order.push(node);
+    for (const neighbor of graph.get(node) ?? []) {
+      const newDeg = inDegree.get(neighbor)! - 1;
+      inDegree.set(neighbor, newDeg);
+      if (newDeg === 0) queue.push(neighbor);
+    }
+  }
+
+  // if we didn't visit all nodes, there's a cycle
+  return order.length === inDegree.size ? order : null;
 }</code></pre></div>
 
 </div>
 
-<div class="cat">HTTP / Integration</div>
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="cat">Interval Merging</div>
 <div class="grid">
 
-<div class="s"><div class="sh"><span class="sn">get / post</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>async function get&lt;T&gt;(url: string): Promise&lt;T&gt; { const r = await fetch(url); if (!r.ok) throw new Error(`${r.status}`); return r.json(); }
-async function post&lt;T&gt;(url: string, body: unknown): Promise&lt;T&gt; {
-  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`); return r.json();
+<div class="s"><div class="sh"><span class="sn">mergeIntervals — overlapping ranges</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>function mergeIntervals(intervals: [number, number][]): [number, number][] {
+  const sorted = [...intervals].sort((a, b) =&gt; a[0] - b[0]);
+  const merged: [number, number][] = [sorted[0]];
+
+  for (let i = 1; i &lt; sorted.length; i++) {
+    const last = merged[merged.length - 1];
+    const [start, end] = sorted[i];
+
+    if (start &lt;= last[1]) {
+      last[1] = Math.max(last[1], end); // extend
+    } else {
+      merged.push([start, end]);
+    }
+  }
+
+  return merged;
 }</code></pre></div>
 
-<div class="s"><div class="sh"><span class="sn">paginateAll (cursor-based)</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>async function paginateAll&lt;T extends { id: string }&gt;(fetch_: (cursor?: string) => Promise&lt;{ data: T[]; has_more: boolean }&gt;) {
-  const all: T[] = []; let cursor: string | undefined;
-  while (true) { const p = await fetch_(cursor); all.push(...p.data); if (!p.has_more || !p.data.length) break; cursor = p.data.at(-1)!.id; }
+</div>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="cat">Idempotency &amp; Dedup</div>
+<div class="grid">
+
+<div class="s"><div class="sh"><span class="sn">idempotent — skip duplicate operations</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>// Use when: retried requests must produce same result (payments, webhooks)
+function processIdempotent&lt;TReq, TRes&gt;(
+  cache: Map&lt;string, TRes&gt;,
+  idempotencyKey: string,
+  request: TReq,
+  handler: (req: TReq) =&gt; TRes,
+): TRes {
+  if (cache.has(idempotencyKey)) {
+    return cache.get(idempotencyKey)!;
+  }
+  const result = handler(request);
+  cache.set(idempotencyKey, result);
+  return result;
+}</code></pre></div>
+
+</div>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="cat">Pagination &amp; Retry</div>
+<div class="grid">
+
+<div class="s"><div class="sh"><span class="sn">paginateAll — cursor-based (Stripe pattern)</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>type Page&lt;T&gt; = { data: T[]; has_more: boolean };
+
+async function paginateAll&lt;T extends { id: string }&gt;(
+  fetchPage: (cursor?: string) =&gt; Promise&lt;Page&lt;T&gt;&gt;,
+) {
+  const all: T[] = [];
+  let cursor: string | undefined;
+
+  while (true) {
+    const page = await fetchPage(cursor);
+    all.push(...page.data);
+    if (!page.has_more || !page.data.length) break;
+    cursor = page.data.at(-1)!.id;
+  }
+
   return all;
 }</code></pre></div>
 
-<div class="s"><div class="sh"><span class="sn">retry</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>async function retry&lt;T&gt;(fn: () => Promise&lt;T&gt;, n = 3, delay = 200): Promise&lt;T&gt; {
-  for (let i = 0; i <= n; i++) { try { return await fn(); } catch (e) { if (i === n) throw e; await new Promise(r => setTimeout(r, delay * 2 ** i)); } }
-  throw new Error();
+<div class="s"><div class="sh"><span class="sn">retry — exponential backoff</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>async function retry&lt;T&gt;(
+  fn: () =&gt; Promise&lt;T&gt;,
+  maxAttempts = 3,
+  baseDelayMs = 200,
+): Promise&lt;T&gt; {
+  for (let attempt = 0; attempt &lt;= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt === maxAttempts) throw err;
+      const delay = baseDelayMs * 2 ** attempt;
+      await new Promise(resolve =&gt; setTimeout(resolve, delay));
+    }
+  }
+  throw new Error("unreachable");
 }</code></pre></div>
 
 </div>
 
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="cat">String Normalization</div>
+<div class="grid">
+
+<div class="s"><div class="sh"><span class="sn">normalize — company/entity name matching</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>// Strip suffixes, normalize whitespace/punctuation, lowercase
+// Use when: matching "Acme, Inc." to "acme inc" or "ACME"
+const SUFFIXES = /\b(inc|corp|llc|ltd|co|company|plc)\.?\s*$/i;
+const NOISE = /[&amp;,.'"-]/g;
+
+function normalizeName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(NOISE, " ")
+    .replace(SUFFIXES, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+// normalizeName("Acme & Co., Inc.") =&gt; "acme co"</code></pre></div>
+
+</div>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="cat">HTTP Helpers</div>
+<div class="grid">
+
+<div class="s"><div class="sh"><span class="sn">get / post</span><button class="cp" onclick="copy(this)">Copy</button></div>
+<pre><code>async function get&lt;T&gt;(url: string): Promise&lt;T&gt; {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`GET ${res.status}`);
+  return res.json();
+}
+
+async function post&lt;T&gt;(url: string, body: unknown): Promise&lt;T&gt; {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`POST ${res.status}: ${await res.text()}`);
+  return res.json();
+}</code></pre></div>
+
+</div>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
 <div class="cat">File I/O</div>
 <div class="grid">
 
 <div class="s"><div class="sh"><span class="sn">readLines / readJSON / writeJSON</span><button class="cp" onclick="copy(this)">Copy</button></div>
 <pre><code>import { readFileSync, writeFileSync } from "fs";
-const readText = (p: string) => readFileSync(p, "utf-8");
-const readLines = (p: string) => readText(p).trim().split("\n");
-const readJSON = &lt;T&gt;(p: string): T => JSON.parse(readText(p));
-const writeJSON = (p: string, d: unknown) => writeFileSync(p, JSON.stringify(d, null, 2));</code></pre></div>
+
+const readText  = (path: string) =&gt; readFileSync(path, "utf-8");
+const readLines = (path: string) =&gt; readText(path).trim().split("\n");
+const readJSON  = &lt;T&gt;(path: string): T =&gt; JSON.parse(readText(path));
+const writeJSON = (path: string, data: unknown) =&gt;
+  writeFileSync(path, JSON.stringify(data, null, 2));</code></pre></div>
 
 </div>
 
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
 <div class="cat">Testing</div>
 <div class="grid">
 
 <div class="s"><div class="sh"><span class="sn">assertEqual</span><button class="cp" onclick="copy(this)">Copy</button></div>
-<pre><code>function eq&lt;T&gt;(actual: T, expected: T, label: string) {
-  const a = JSON.stringify(actual), e = JSON.stringify(expected);
+<pre><code>function assertEqual&lt;T&gt;(actual: T, expected: T, label: string) {
+  const a = JSON.stringify(actual);
+  const e = JSON.stringify(expected);
   if (a !== e) throw new Error(`${label}: got ${a}, want ${e}`);
   console.log(`ok: ${label}`);
 }</code></pre></div>
