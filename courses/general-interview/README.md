@@ -14,6 +14,7 @@ Interview strategy, behavioral questions, and common technical topics for senior
 - Building your career narrative and identifying your "superpower"
 - Company research framework
 - Pipeline management and interview logistics
+- Managing nerves: freeze response, pressure inoculation, in-the-moment recovery
 - Recommended study order across all courses
 
 ### 01 — Interview Strategy

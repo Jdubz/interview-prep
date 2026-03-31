@@ -258,7 +258,174 @@ Interviewing is draining. Set sustainable limits:
 
 ---
 
-## 6. How to Use This Course
+## 6. Managing Nerves and Performance Under Pressure
+
+Many experienced engineers fail interviews not because the problems are too hard, but because their brain freezes under pressure. You solve harder problems every day at work — the difference is the artificial stakes and the feeling of being evaluated. This section treats interview anxiety as the concrete, solvable problem that it is.
+
+### Why Your Brain Freezes
+
+When you perceive a threat (and your brain treats "being judged by a stranger" as a threat), your nervous system activates a fight-flight-freeze response. Adrenaline floods your body, your prefrontal cortex (the part that reasons, plans, and writes code) goes partially offline, and your amygdala (the part that screams "DANGER") takes over.
+
+This is not a character flaw. It is a physiological response. And like any physiological response, it can be managed with practice.
+
+```
+What's happening:                     What it feels like:
+─────────────────────                 ────────────────────
+Adrenaline spike                      Heart racing, hands shaking
+Prefrontal cortex suppressed          "I can't think straight"
+Working memory reduced                Forgetting things you know cold
+Tunnel vision / fixation              Getting stuck on one approach
+Time distortion                       "I'm running out of time"
+```
+
+### Pre-Interview: Lowering Your Baseline
+
+Your anxiety level walking INTO the interview matters more than any in-the-moment trick. These practices lower your baseline so that the adrenaline spike during the interview doesn't push you over the threshold.
+
+**The morning of:**
+- Exercise before the interview — even a 20-minute walk. Physical activity metabolizes stress hormones.
+- Eat a real meal 60-90 minutes before. Low blood sugar compounds anxiety. Avoid excess caffeine.
+- Arrive (or log in) 10 minutes early, not 30. Too early means more time to spiral.
+- Do a brief warm-up problem you've already solved. The goal isn't learning — it's getting your brain into "coding mode" so the interview isn't a cold start.
+
+**The night before:**
+- Lay out your environment. For virtual: test your IDE, camera, mic, internet. For in-person: know the route, the building, the parking. Eliminating logistics uncertainty reduces background anxiety.
+- Stop studying. Cramming the night before adds stress and changes nothing. Review your notes lightly, then do something enjoyable.
+
+**The week before:**
+- Practice under simulated pressure (see "Pressure Inoculation" below). The interview should not be the first time you code while nervous.
+- Sleep. Chronic sleep deprivation raises cortisol and makes freeze responses more likely. Prioritize 7-8 hours for the 3 nights before an on-site.
+
+### In the Moment: When You Feel the Freeze Coming
+
+You will recognize the freeze: your mind goes blank, you stare at the problem, and you feel the urge to stay silent while panic builds internally. Here is what to do.
+
+**1. Talk out loud immediately.**
+
+Silence is the freeze's best friend. The moment you stop talking, the anxiety loop tightens. Force yourself to narrate, even if what you're saying feels obvious or incomplete:
+
+```
+"Okay, let me re-read the problem statement..."
+"So the input is an array of integers and I need to return..."
+"My first instinct is a brute force approach — let me think about why..."
+"I'm going to start by considering the simplest case..."
+```
+
+This works because speech activates your prefrontal cortex and breaks the freeze loop. It also buys you time — the interviewer hears you thinking, not struggling.
+
+**2. Write something — anything.**
+
+When you can't think of the solution, write what you DO know:
+
+```
+# What I know:
+# - Input: list of intervals [(start, end), ...]
+# - Output: merged intervals, no overlaps
+# - Edge cases: empty list, single interval, already sorted
+#
+# Brute force idea: compare every pair? That's O(n^2)...
+# Better: what if I sort by start time first?
+```
+
+Writing externalizes your thinking and frees up working memory. It also gives the interviewer a window into your process — which they're evaluating even more than your final answer.
+
+**3. Use a physical reset.**
+
+When anxiety spikes, your breathing becomes shallow. This reduces oxygen to your brain and worsens the cognitive impairment. Do a physiological sigh — two quick inhales through the nose, one long exhale through the mouth. It takes 5 seconds. You can do it while "reading the problem" or "thinking about the approach." One or two of these can meaningfully lower your heart rate in under 30 seconds.
+
+**4. Name the moment, then move past it.**
+
+It is completely acceptable to say to an interviewer:
+
+```
+"Let me take a moment to organize my thoughts."
+"I want to make sure I'm approaching this clearly — give me 15 seconds."
+"I know I've seen this pattern before. Let me think about where it applies."
+```
+
+This sounds confident, not weak. Interviewers respect candidates who self-regulate. What they penalize is prolonged silence with no signal of what's happening.
+
+**5. Fall back on process, not brilliance.**
+
+When your brain is foggy, you will not have a flash of insight. Stop waiting for one. Fall back on a mechanical process:
+
+```
+For coding problems:
+  1. Restate the problem in your own words
+  2. Write out 2-3 concrete examples by hand
+  3. Identify the brute force approach
+  4. Code the brute force
+  5. Only then consider optimization
+
+For system design:
+  1. List functional requirements
+  2. List non-functional requirements
+  3. Draw boxes and arrows for the obvious components
+  4. Pick one component and go deeper
+
+For behavioral questions:
+  1. Pick a story from your bank (you prepared these in section 2)
+  2. State the Situation in one sentence
+  3. State the Task
+  4. Walk through the Action
+  5. State the Result
+```
+
+Process is anxiety-proof. Brilliance is not. When you have a checklist to follow, your prefrontal cortex has a handrail.
+
+### Pressure Inoculation: Training for the Adrenaline
+
+The single most effective way to reduce interview anxiety is to practice under conditions that trigger it. Your goal is to make the real interview feel familiar, not novel.
+
+**Level 1 — Timed problems (solo)**
+- Set a 25-minute timer on LeetCode or a practice problem. When the timer starts, your heart rate should go up slightly. If it doesn't, you're too comfortable — add stakes (e.g., "if I don't solve it, I skip my next break").
+- Practice talking out loud while solving, even alone. This feels ridiculous at first. Do it anyway.
+
+**Level 2 — Mock interviews with a friend**
+- Ask a colleague or friend to interview you. Use a real problem they choose (not one you've seen). Have them sit silently while you work — the silence is part of the pressure.
+- Debrief after: what did you feel? Where did you freeze? What technique did you use (or wish you'd used)?
+
+**Level 3 — Mock interviews with a stranger**
+- Use services like Pramp, interviewing.io, or find a stranger through a Discord community. The discomfort of performing for someone you don't know is much closer to a real interview.
+- Record these sessions if possible. Watching yourself will reveal habits you don't notice in the moment (long silences, fidgeting, apologizing for your thinking).
+
+**Level 4 — Real interviews at companies you care less about**
+- Schedule 2-3 interviews at companies that are not your top choice. Treat them as live practice. The stakes feel real because they ARE real, but the outcome matters less to you.
+- This also builds momentum and may produce offers you can use as negotiation leverage.
+
+### Reframing the Interview
+
+The stories you tell yourself about the interview shape your anxiety response. Some reframes that help:
+
+**"This is a conversation, not an exam."**
+The interviewer is trying to determine if you'd be a good colleague. They want you to succeed — an empty pipeline costs them time and money. In most cases, they're actively rooting for you.
+
+**"I'm evaluating them too."**
+You are not a supplicant begging for a job. You are a senior engineer deciding whether this team, codebase, and company deserve your next few years. The interview is bidirectional. Sitting in this posture changes how you carry yourself.
+
+**"A freeze is a data point, not a verdict."**
+If you freeze, it doesn't mean you're not good enough. It means your nervous system did what nervous systems do. Use the recovery techniques above, finish the interview, and debrief after. Some of the best interview performances include a recovery from a rough start.
+
+**"I've solved harder problems than this."**
+Before the interview, write down 3 genuinely hard problems you've solved at work. Debugging a production outage at 2am. Designing a system that handles 10x traffic. Mentoring a struggling engineer through a breakthrough. Remind yourself that an interview problem is a toy compared to real engineering.
+
+### The Post-Interview Debrief
+
+After every interview (good or bad), spend 10 minutes writing down:
+
+```
+1. Where did I feel confident? Why?
+2. Where did I freeze or struggle? What triggered it?
+3. What recovery technique did I use (or wish I'd used)?
+4. What would I do differently in the next interview?
+5. One thing I did well that I want to repeat.
+```
+
+This turns every interview into training data. Over time, you'll notice your freeze triggers shrink and your recovery speed improves.
+
+---
+
+## 7. How to Use This Course
 
 ### Recommended Study Order
 
@@ -294,6 +461,7 @@ Daily (30-60 min):
 
 Weekly (2-3 hours):
   - One mock system design (45 min + review)
+  - One pressure inoculation session (mock interview or timed problem with talk-aloud)
   - Review and refine behavioral stories based on research for upcoming interviews
 
 Before each interview:
@@ -305,7 +473,7 @@ Before each interview:
 
 ---
 
-## 7. Quick Checklist
+## 8. Quick Checklist
 
 Before moving to Module 01:
 
@@ -314,6 +482,8 @@ Before moving to Module 01:
 - [ ] Written a 2-minute career narrative
 - [ ] Identified your "superpower"
 - [ ] Know the typical interview loop structure
+- [ ] Identified your freeze triggers and chosen 2-3 recovery techniques to practice
+- [ ] Scheduled at least one mock interview for pressure inoculation
 - [ ] Started a tracking spreadsheet (if actively searching)
 
 ---
@@ -330,6 +500,7 @@ Start with [Module 02: Behavioral Interview Mastery](02-behavioral-mastery/) —
 - Write out your 2-minute career narrative and practice delivering it out loud three times. Record yourself on the third attempt and listen back.
 - Draft your "superpower" statement. Test it with a trusted colleague: does it ring true? Would they describe you the same way?
 - Fill in the company research template for one target company. Time yourself -- aim for 30-45 minutes.
+- Do one timed coding problem (25 minutes) while narrating out loud. Notice where anxiety spikes and practice at least one recovery technique (physiological sigh, writing what you know, falling back on the step-by-step process).
 
 ---
 
