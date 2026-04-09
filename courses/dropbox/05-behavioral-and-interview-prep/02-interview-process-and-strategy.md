@@ -491,59 +491,53 @@ The interviewer will likely add requirements. Be ready for:
 
 ---
 
-## 5. Stage 4: Onsite Loop Set 2
+## 5. Stage 4: Onsite Day 2
+
+> **Confirmed from recruiter screen.** Day 2 is an architecture interview and a behavioral interview (STAR).
 
 **Duration:** ~2 hours, virtual
-**Format:** 2 interviews, primarily for leveling (IC3 vs IC4 vs IC5)
+**Format:** 2 interviews — architecture + behavioral. Primarily for leveling (IC3 vs IC4 vs IC5).
+**Must pass Day 1 to reach Day 2.**
 
-### Interview 4: Behavioral (1 hour, with hiring manager)
+### Interview 4: Architecture (1 hour)
 
-**Format:** STAR-method behavioral questions mapped to Dropbox values (AOWE).
-
-**What they assess:**
-- Leadership (even for non-management roles)
-- Cross-team collaboration
-- Handling disagreements constructively
-- Managing ambiguity
-- Growth mindset and learning agility
-- Cultural fit with Virtual First
-
-See [01-values-and-culture.md](./01-values-and-culture.md) for detailed prep on values, story bank, and question mapping.
-
-**Tips:**
-- Prepare 6-8 STAR stories, mapped to AOWE values
-- Practice each in under 2 minutes
-- Be specific — names, numbers, dates, outcomes
-- Show self-awareness — what you learned, what you'd do differently
-- Be authentic — they value genuineness over polish
-
-### Interview 5: System Design (1 hour, IC4+ only)
+> **Confirmed from recruiter screen.** This is a system/software architecture interview.
 
 **Format:** Design a system from requirements to architecture.
 
 **What they assess:**
 - Driving the design independently (especially early stages)
-- Practical, not theoretical — they want buildable designs
+- Practical, product-grounded designs — Dropbox asks you to build things related to their actual products, not abstract systems
 - Trade-off awareness (CAP, latency vs. consistency, cost vs. performance)
 - Scale and operational thinking
+- **Comprehensiveness, not difficulty** — an ex-Dropbox interviewer noted their selectivity stems from edge-case thoroughness and attention to detail, not exotic questions
+- For a frontend-heavy role: may include frontend architecture alongside backend
 
 **Level-specific expectations:**
 
 | Level | Expectation |
 |-------|------------|
-| IC3 | May not have this round |
-| IC4 | Define API endpoints, data models, functional high-level design |
-| IC5 | All of IC4 + deep dive into scaling, large file handling, advanced trade-offs |
+| IC4 | Define API endpoints, data models, functional high-level design. Not expected to know pre-signed URLs or chunking upfront, but should reason through probing questions. Interviewer helps drive later stages. |
+| IC5 | Quickly get through high-level design to spend time on large file handling. More proactive than IC4 — think through several options independently. Identify and solve issues with minimal interviewer steering. |
 
-**Likely topics:**
-- Design Dropbox (file sync) — the classic
+**Reported design prompts (from candidate experiences):**
+- Design Dropbox (file sync) — the classic, still asked frequently
 - Design a notification broadcasting system
-- Design a search/recommendation system
-- Design a file sharing platform
 - Design a recommender system suggesting files to mobile users
-- **Frontend architecture** — Design Google Calendar (frontend), design a collaborative editor (reported in frontend loops)
+- Design a feature helping teams collaborate on video content (reported Jan 2026)
+- Design an HTTP API and backend architecture for processing files in cloud storage
+- Design a folder access system with user roles (admin, editor, viewer)
+- Design a universal search system across multiple SaaS tools (Dash-flavored)
+- Design an AI-powered Q&A system over enterprise documents (Dash-flavored)
+- **Frontend architecture** — Design Google Calendar (frontend), design a collaborative editor
 
 See [04-system-design/](../04-system-design/) for detailed prep.
+
+**Dropbox-specific behaviors in this round:**
+- **Interviewers offer hints freely** — Dropbox views this as realistic since "in the real-world, people ask questions." Taking hints is NOT penalized the way it is at Meta or Google.
+- **Time management is critical** — "Don't dive into nitty-gritty details unless the interviewer specifically leads you there." Drive the high-level architecture first.
+- **Some interviewers are fixed on specific implementations** — candidate reports suggest some interviewers have a particular solution in mind and may reject alternatives. If you sense this, ask probing questions to understand what they're looking for.
+- **Concurrency often comes up** — even in design rounds, expect questions about threading, concurrent access, and race conditions. This is a Dropbox-specific emphasis.
 
 **Strategy:**
 1. Clarify requirements (3 min)
@@ -554,6 +548,47 @@ See [04-system-design/](../04-system-design/) for detailed prep.
 6. Operational concerns (5 min)
 
 **Drive the conversation yourself.** Don't wait for the interviewer to tell you what to do. They'll probe later.
+
+**Scoring:** A "strong hire" is given very rarely and requires that you "killed the question, all follow-ups and best possible runtime, explained everything flawlessly." You need one strong hire with zero negatives across the loop. A "no hire" results from red flags, insufficient data points, or only getting basic parts right without follow-ups.
+
+### Interview 5: Behavioral — STAR Format (1 hour)
+
+> **Confirmed from recruiter screen.** STAR-method behavioral interview. This is with the **hiring manager**.
+
+**Format:** STAR-method behavioral questions mapped to Dropbox values (AOWE). Evaluated on three impact dimensions: **Consistency** (reliable results), **Velocity** (quick quality output), **Accountability** (own outcomes).
+
+**What they assess:**
+- Leadership (even for non-management roles)
+- Cross-team collaboration
+- Handling disagreements constructively
+- Managing ambiguity and 0→1 product environments
+- Growth mindset and learning agility
+- Cultural fit with Virtual First
+- Diversity and inclusion contributions (confirmed direct question)
+
+See [01-values-and-culture.md](./01-values-and-culture.md) for detailed prep on values, story bank, question mapping, and 0→1 product environment prep.
+
+**Reported behavioral questions:**
+1. "Tell me about a time you had a conflict with someone. How did you resolve it and what did you learn?"
+2. "What is the project you are most proud of?"
+3. "Tell me about a time when you solved a problem innovatively."
+4. "Tell me about a time when you dealt with a difficult person at work."
+5. "Tell me about a technical challenge that you have overcome."
+6. **"How do you contribute to diversity and inclusion?"** — confirmed direct question
+7. "How do you build and manage a project schedule?"
+8. "Describe critical feedback you received and your response."
+9. "Talk about an impactful project that you led."
+10. "Tell me about a time you worked in an ambiguous environment with unclear requirements."
+
+**Tips:**
+- Prepare 6-8 STAR stories, mapped to AOWE values
+- Practice each in under 2 minutes
+- Be specific — names, numbers, dates, outcomes
+- Show self-awareness — what you learned, what you'd do differently
+- Be authentic — they value genuineness over polish
+- Include at least one story about working in an ambiguous / early-stage environment
+- **Prepare a D&I story** — this is a confirmed question, not hypothetical
+- Dropbox does **not** check references — the behavioral round is their primary culture signal
 
 ---
 
@@ -590,8 +625,8 @@ Comp includes base salary, equity (RSUs), and annual bonus.
 - [ ] Walk through 1 system design out loud (file sync or search infrastructure). Time yourself.
 - [ ] Review the 3 classic Dropbox problems: Id Allocator, Game of Life, Web Crawler
 - [ ] Review key algorithm patterns: BFS/DFS, sliding window, heaps
-- [ ] Practice vanilla JS: build an image carousel or implement getByClassName without frameworks
-- [ ] Review DOM APIs: `querySelector`, `addEventListener`, `createElement`, `classList`, event delegation
+- [ ] Practice file transfer: implement chunked upload (React hook + Python API) from memory
+- [ ] Practice React coding: build an autocomplete or similar interactive component from scratch
 - [ ] Prepare 5+ questions to ask interviewers
 - [ ] Test setup: camera, mic, screen sharing, IDE, CodeSignal
 - [ ] Review Dropbox Engineering Career Framework (especially your target level)

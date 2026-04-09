@@ -77,7 +77,9 @@ Each module directory contains numbered files:
 2. **Full Stack Coding** — React/TypeScript + Python (1 hr)
 3. **Project Deep Dive** — you select a project, go deep into architecture & structure (1 hr)
 
-**Day 2 (leveling):** Behavioral + System Design (IC4+ only)
+**Day 2 (leveling — must pass Day 1):**
+1. **Architecture** — system/software architecture interview (1 hr)
+2. **Behavioral** — STAR format (1 hr)
 
 ### Study Plan
 

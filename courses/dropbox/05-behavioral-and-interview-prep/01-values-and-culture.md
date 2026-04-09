@@ -240,6 +240,10 @@ The interview assesses whether you match the target level:
 | "Describe constructive criticism you've given" | Own It + Make Work Human |
 | "Tell me about a time you had to make tough prioritization decisions" | Aim Higher + Own It |
 | "How do you handle working in a remote/distributed team?" | Make Work Human |
+| **"How do you contribute to diversity and inclusion?"** | Make Work Human (**confirmed direct question**) |
+| "Tell me about a time you solved a problem innovatively" | Aim Higher + Own It |
+| "Describe critical feedback you received and your response" | Own It + Make Work Human |
+| "Tell me about a time you worked in an ambiguous environment" | Own It + 0→1 mindset |
 
 ### STAR Format
 
