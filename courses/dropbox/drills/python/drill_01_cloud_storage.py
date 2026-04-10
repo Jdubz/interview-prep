@@ -66,61 +66,120 @@ Examples
   cs.rollback()                             # True  (undoes notes.txt add)
   cs.get_used_space()                       # 30
 """
-
+import copy
 
 class CloudStorage:
     def __init__(self, capacity: int | None = None):
-        # TODO: initialize your data structures
+        self.files: dict[str, dict] = {}
+        self.capacity = capacity
+        self.history = []
         pass
 
-    # ── Level 1 ──────────────────────────────────────────────
+    # ── Level 1 ──────────────────────────────────────────────     
 
     def add_file(self, name: str, size: int, owner: str = "") -> bool:
-        """Add a file. Return False if name exists or would exceed capacity."""
-        raise NotImplementedError("Level 1: add_file")
+        used_space = self.get_used_space()
+        if self.capacity != None and used_space + size > self.capacity:
+            return False
+        existing_file = self.files.get(name)
+        if existing_file:
+            return False
+        self.history.append(copy.deepcopy(self.files))
+        self.files[name] = {
+            "name": name,
+            "size": size,
+            "owner": owner,
+        }
+        return True
+    # REVIEW: `!= None` works but `is not None` is Pythonic convention.
+    # get_used_space() iterates all files on every add — O(n). Could track
+    # a running self.used counter for O(1), but fine for interview.
 
     def get_file(self, name: str) -> int:
-        """Return file size, or -1 if not found."""
-        raise NotImplementedError("Level 1: get_file")
+        file = self.files.get(name)
+        if not file:
+            return -1
+        return file.get("size")
+    # REVIEW: `if not file` is falsy for empty dicts too — `if file is None`
+    # is safer. Also file["size"] is better than .get("size") when you know
+    # the key exists — .get returns None on missing key, ["size"] raises.
 
     def delete_file(self, name: str) -> bool:
-        """Remove a file. Return False if not found."""
-        raise NotImplementedError("Level 1: delete_file")
+        self.history.append(copy.deepcopy(self.files))
+        file = self.files.pop(name, None)
+        if not file:
+            self.history.pop()
+            return False
+        return True
+    # REVIEW: deepcopy even when file doesn't exist is wasteful. Check
+    # existence first, snapshot only on success (like you do in add_file).
 
     def list_files(self) -> list[str]:
-        """Return all filenames sorted alphabetically."""
-        raise NotImplementedError("Level 1: list_files")
+        files =  list(self.files.keys())
+        files.sort()
+        return files
+    # REVIEW: Could be one line: return sorted(self.files)
+    # Iterating a dict gives keys by default.
 
     # ── Level 2 ──────────────────────────────────────────────
 
     def get_files_by_owner(self, owner: str) -> list[str]:
-        """Files owned by user, sorted by size desc then name asc."""
-        raise NotImplementedError("Level 2: get_files_by_owner")
+        files = [file["name"] for file in self.files.values() if file["owner"] == owner ]
+        files.sort()
+        return files
+    # BUG: Spec says sort by size desc, then name asc. You're sorting
+    # alphabetically only. Need: sorted(..., key=lambda f: (-f["size"], f["name"]))
+    # then extract names after sorting.
 
     def change_owner(self, name: str, new_owner: str) -> bool:
-        """Change file owner. Return False if file not found."""
-        raise NotImplementedError("Level 2: change_owner")
+        self.history.append(copy.deepcopy(self.files))
+        file = self.files.get(name)
+        if not file:
+            return False
+        file["owner"] = new_owner
+        return True
+    # BUG: Snapshot happens before existence check. When file is missing,
+    # you return False but leave a snapshot in history. A rollback would
+    # then restore to an identical state (wasted rollback). Move snapshot
+    # after the existence check.
 
     # ── Level 3 ──────────────────────────────────────────────
 
     def search(self, prefix: str) -> list[str]:
-        """Files starting with prefix, sorted size desc / name asc, max 10."""
-        raise NotImplementedError("Level 3: search")
+        files = [file for file in self.files.values() if file["name"].startswith(prefix)]
+        sorted_files = sorted(files, key = lambda file: (-file["size"], file["name"]))
+
+        return [f["name"] for f in sorted_files[:10]]
+    # REVIEW: Clean. Sort key and slice are correct.
 
     def search_by_suffix(self, suffix: str) -> list[str]:
-        """Files ending with suffix, sorted size desc / name asc, max 10."""
-        raise NotImplementedError("Level 3: search_by_suffix")
+        files = [file for file in self.files.values() if file["name"].endswith(suffix)]
+        sorted_files = sorted(files, key = lambda file: (-file["size"], file["name"]))
+
+        return [f["name"] for f in sorted_files[:10]]
+    # REVIEW: Nearly identical to search(). In production you'd extract a
+    # helper, but duplicating is the right call in a timed interview.
 
     # ── Level 4 ──────────────────────────────────────────────
 
     def get_used_space(self) -> int:
-        """Return total bytes currently stored."""
-        raise NotImplementedError("Level 4: get_used_space")
+        used_space = 0
+        for file in self.files.values():
+            used_space += file["size"] # or d.get("size")
+        return used_space
+    # REVIEW: Works. Pythonic shorthand: return sum(f["size"] for f in self.files.values())
 
     def rollback(self) -> bool:
-        """Undo last successful add/delete/change_owner. False if nothing to undo."""
-        raise NotImplementedError("Level 4: rollback")
-
+        if len(self.history) == 0:
+            return False
+        self.files = self.history.pop()
+        return True
+    # REVIEW: Clean and correct.
+    #
+    # OVERALL: deepcopy of entire files dict per mutation is O(n) memory
+    # per operation. Simple and correct — right call for a timed assessment.
+    # The alternative (storing undo ops like ("add", name, data)) is O(1)
+    # per op but harder to implement. Mention the tradeoff if interviewer asks.
 
 # ─── Self-Checks (do not edit below this line) ──────────────────
 
