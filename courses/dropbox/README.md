@@ -45,6 +45,10 @@ Interview preparation for the Full Stack Software Engineer role on Dropbox's Das
 - [05 – Mock Interview Scripts](./06-exercises-and-practice/05-mock-interview-scripts.md) — Full scripts for all 5 interview stages, with evaluation rubrics and a mock schedule
 - [06 – Scaling at Dropbox Scale](./06-exercises-and-practice/06-scaling-at-dropbox-scale.md) — Mental models, vocabulary, back-of-envelope math, and scaling patterns for reasoning about 700M-user systems
 
+### Coding Drills
+- [CodeSignal Drills](./drills/) — 6 progressive drills in Python + TypeScript with AI assistance guidelines
+- [React Onsite Challenges](./drills/REACT_CHALLENGES.md) — 6 React component-building challenges for the frontend and full-stack onsite coding rounds (no AI)
+
 ---
 
 ## Content Per Module
